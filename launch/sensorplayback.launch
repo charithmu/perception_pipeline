@@ -1,0 +1,19 @@
+<launch>
+
+    <arg name="prefix" default="/home/charith/storage/LIDAR-DATA/bedroom2" />
+    <arg name="file_1" default="/pos1/pos1.bag" />
+    <arg name="file_2" default="/pos2/pos2.bag" />
+    <arg name="file_3" default="/pos3/pos3.bag" />
+
+    <!-- add dashdash clock manually -->
+
+    <node pkg="rosbag" type="play" name="sensor1_playback" output="screen" 
+    args="--clock --hz=1 -l $(arg prefix)$(arg file_1) /os_cloud_node/points:=/env/sensor1/points"/>
+
+    <node pkg="rosbag" type="play" name="sensor2_playback" output="screen" 
+    args="--clock --hz=1 -l $(arg prefix)$(arg file_2) /os_cloud_node/points:=/env/sensor2/points"/>
+
+    <node pkg="rosbag" type="play" name="sensor3_playback" output="screen"
+    args="--clock --hz=1 -l $(arg prefix)$(arg file_3) /os_cloud_node/points:=/env/sensor3/points"/>
+
+</launch>
