@@ -1,0 +1,31 @@
+<launch>
+  <node name="tranform_node" pkg="lesson_perception" type="transformpipe_node" output="screen">
+    <rosparam>
+        world_frame: "sensor1_frame" 
+
+        sensor1_frame: "sensor1_frame" 
+        sensor2_frame: "sensor1_frame" 
+        sensor3_frame: "sensor1_frame" 
+        sensor4_frame: "sensor4_frame" 
+
+        sensor1_topic: "env/sensor1/points" 
+        sensor2_topic: "env/sensor2/points" 
+        sensor3_topic: "env/sensor3/points" 
+        sensor4_topic: "env/sensor4/points"
+    </rosparam>
+  </node>
+
+  <node name="static_transforms" pkg="lesson_perception" type="static_transforms" output="screen"></node>
+  <rosparam file="$(find lesson_perception)/config/transforms.yaml" />
+
+  <!-- <node pkg="tf2_ros" type="static_transform_publisher" name="sensor2_transformer" 
+    args="1.25127 -2.59854 0.382797 -0.0045495 -0.003113 -0.7406218 0.6718995 sensor1_frame sensor2_frame" />
+
+  <node pkg="tf2_ros" type="static_transform_publisher" name="sensor3_transformer" 
+    args="-1.72954 -1.3173 0.216273 0.0177781 -0.0025568 -0.7324981 0.6805321 sensor1_frame sensor3_frame" /> -->
+
+  <!-- <node pkg="tf2_ros" type="static_transform_publisher" name="sensor4_transformer" 
+    args="1.72954 -1.3173 0.216273 0.0177781 -0.0025568 -0.7324981 0.6805321 world_frame sensor4_frame" /> -->
+
+
+</launch>
