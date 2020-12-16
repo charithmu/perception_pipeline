@@ -91,15 +91,15 @@ void CloudTransformer::run(ros::NodeHandle &nh)
     sensor_msgs::PointCloud2::ConstPtr raw_cloud3 =
         ros::topic::waitForMessage<sensor_msgs::PointCloud2>(sensor3topic, nh);
 
-    // Get the  transformation for each pointcloud
+    // Get the transformation for each pointcloud
     geometry_msgs::TransformStamped transformStamped1, transformStamped2, transformStamped3, transformStamped4;
 
     transformStamped1 = identityTransform("sensor1_frame", "sensor1_frame");
 
     try
     {
-      transformStamped2 = tfBuffer.lookupTransform(sensor1_frame, sensor2_frame, ros::Time(0), ros::Duration(1));
-      transformStamped3 = tfBuffer.lookupTransform(sensor1_frame, sensor3_frame, ros::Time(0), ros::Duration(1));
+      transformStamped2 = tfBuffer.lookupTransform(sensor1_frame, sensor2_frame, ros::Time(0), ros::Duration(0.1));
+      transformStamped3 = tfBuffer.lookupTransform(sensor1_frame, sensor3_frame, ros::Time(0), ros::Duration(0.1));
     }
     catch (tf2::TransformException &ex)
     {
@@ -189,7 +189,7 @@ int main(int argc, char *argv[])
 
   ros::Duration(1).sleep();  // wait to initialize
 
-  transformerpipe.run(nh);
+  transformerpipe.run(nh); // start the pipeline
 
   return 0;
 }

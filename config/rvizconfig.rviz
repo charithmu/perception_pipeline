@@ -7,7 +7,7 @@ Panels:
         - /Global Options1
         - /Status1
         - /TF1/Tree1
-        - /TF1/Tree1/sensor1_frame1
+        - /PointCloud24/Autocompute Value Bounds1
       Splitter Ratio: 0.5
     Tree Height: 713
   - Class: rviz/Selection
@@ -95,10 +95,10 @@ Visualization Manager:
       Color: 255; 255; 255
       Color Transformer: Intensity
       Decay Time: 0
-      Enabled: true
+      Enabled: false
       Invert Rainbow: false
       Max Color: 255; 255; 255
-      Max Intensity: 1811
+      Max Intensity: 1814
       Min Color: 100; 10; 10
       Min Intensity: 0
       Name: PointCloud2
@@ -112,7 +112,7 @@ Visualization Manager:
       Unreliable: false
       Use Fixed Frame: true
       Use rainbow: false
-      Value: true
+      Value: false
     - Alpha: 1
       Autocompute Intensity Bounds: true
       Autocompute Value Bounds:
@@ -125,10 +125,10 @@ Visualization Manager:
       Color: 255; 255; 255
       Color Transformer: Intensity
       Decay Time: 0
-      Enabled: true
+      Enabled: false
       Invert Rainbow: false
       Max Color: 255; 255; 255
-      Max Intensity: 4621
+      Max Intensity: 4584
       Min Color: 10; 100; 10
       Min Intensity: 0
       Name: PointCloud2
@@ -142,7 +142,7 @@ Visualization Manager:
       Unreliable: false
       Use Fixed Frame: true
       Use rainbow: false
-      Value: true
+      Value: false
     - Alpha: 1
       Autocompute Intensity Bounds: true
       Autocompute Value Bounds:
@@ -155,10 +155,10 @@ Visualization Manager:
       Color: 255; 255; 255
       Color Transformer: Intensity
       Decay Time: 0
-      Enabled: true
+      Enabled: false
       Invert Rainbow: false
       Max Color: 255; 255; 255
-      Max Intensity: 2638
+      Max Intensity: 2635
       Min Color: 10; 10; 100
       Min Intensity: 0
       Name: PointCloud2
@@ -172,7 +172,37 @@ Visualization Manager:
       Unreliable: false
       Use Fixed Frame: true
       Use rainbow: false
-      Value: true
+      Value: false
+    - Alpha: 1
+      Autocompute Intensity Bounds: true
+      Autocompute Value Bounds:
+        Max Value: 0.6975632905960083
+        Min Value: -4.515678882598877
+        Value: false
+      Axis: Y
+      Channel Name: ""
+      Class: rviz/PointCloud2
+      Color: 200; 80; 10
+      Color Transformer: FlatColor
+      Decay Time: 0
+      Enabled: false
+      Invert Rainbow: false
+      Max Color: 80; 50; 40
+      Max Intensity: 5.400871276855469
+      Min Color: 0; 0; 0
+      Min Intensity: -2.5203936100006104
+      Name: PointCloud2
+      Position Transformer: XYZ
+      Queue Size: 10
+      Selectable: true
+      Size (Pixels): 1
+      Size (m): 0.009999999776482582
+      Style: Points
+      Topic: /env/combinedpoints
+      Unreliable: false
+      Use Fixed Frame: true
+      Use rainbow: false
+      Value: false
   Enabled: true
   Global Options:
     Background Color: 48; 48; 48
@@ -201,7 +231,7 @@ Visualization Manager:
   Views:
     Current:
       Class: rviz/Orbit
-      Distance: 9.63441276550293
+      Distance: 8.636032104492188
       Enable Stereo Rendering:
         Stereo Eye Separation: 0.05999999865889549
         Stereo Focal Distance: 1
@@ -209,17 +239,17 @@ Visualization Manager:
         Value: false
       Field of View: 0.7853981852531433
       Focal Point:
-        X: -0.2449992448091507
-        Y: -2.578551769256592
-        Z: -0.8542659282684326
+        X: 0.8289628624916077
+        Y: -2.2003159523010254
+        Z: -0.27486056089401245
       Focal Shape Fixed Size: false
       Focal Shape Size: 0.05000000074505806
       Invert Z Axis: false
       Name: Current View
       Near Clip Distance: 0.009999999776482582
-      Pitch: 1.2847964763641357
+      Pitch: 1.3447964191436768
       Target Frame: <Fixed Frame>
-      Yaw: 3.037219285964966
+      Yaw: 4.6671953201293945
     Saved: ~
 Window Geometry:
   Displays:

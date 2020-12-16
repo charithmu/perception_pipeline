@@ -1,7 +1,6 @@
 
 #include <geometry_msgs/TransformStamped.h>
 #include <ros/ros.h>
-
 #include <tf2/LinearMath/Quaternion.h>
 #include <tf2_ros/static_transform_broadcaster.h>
 #include <tf2_ros/transform_broadcaster.h>
@@ -38,41 +37,17 @@ int main(int argc, char **argv)
 
   std::cout << trans12 << std::endl << trans13 << std::endl << trans14 << std::endl;
 
-  /*
-   * SETUP PUBLISHERS
-   */
-  // ros::Publisher sensor1_transform, sensor2_transform, sensor3_transform, sensor4_transform;
-
-  // sensor1_transform = nh.advertise<geometry_msgs::TransformStamped>("env/transform/sensor1", 1, true);
-  // sensor2_transform = nh.advertise<geometry_msgs::TransformStamped>("env/transform/sensor2", 1, true);
-  // sensor3_transform = nh.advertise<geometry_msgs::TransformStamped>("env/transform/sensor3", 1, true);
-  // sensor4_transform = nh.advertise<geometry_msgs::TransformStamped>("env/transform/sensor4", 1, true);
-
-  // tf2_ros::TransformBroadcaster transform_broadcaster;
+  // Define static tf publisher
   static tf2_ros::StaticTransformBroadcaster static_transform_broadcaster;
 
   geometry_msgs::TransformStamped sensor12_transformStamped, sensor13_transformStamped, sensor14_transformStamped;
 
-  // ros::Rate rate(10.0);
-
-  // while (ros::ok())
-  // {
-
-  //   sensor1_transform.publish(sensor12_transformStamped);
-  //   sensor2_transform.publish(sensor13_transformStamped);
-  //   sensor3_transform.publish(sensor14_transformStamped);
-
-  //   const std::vector<geometry_msgs::TransformStamped> alltransforms{ sensor12_transformStamped,
-  //   sensor13_transformStamped,
-  //   sensor14_transformStamped };
-  //   transform_broadcaster.sendTransform(sensor12_transformStamped);
-  //   rate.sleep();
-  // }
-
+  // Get tf messages built for all the sensors
   sensor12_transformStamped = get_static_transform("sensor1_frame", "sensor2_frame", trans12);
   sensor13_transformStamped = get_static_transform("sensor1_frame", "sensor3_frame", trans13);
   sensor14_transformStamped = get_static_transform("sensor1_frame", "sensor4_frame", trans14);
 
+  // Publish all tf messeges to tf_static
   const std::vector<geometry_msgs::TransformStamped> alltransforms{ sensor12_transformStamped,
                                                                     sensor13_transformStamped,
                                                                     sensor14_transformStamped };
@@ -83,6 +58,7 @@ int main(int argc, char **argv)
   return 0;
 }
 
+// TF messege builder
 geometry_msgs::TransformStamped get_static_transform(std::string parent_frame, std::string child_frame,
                                                      Eigen::Matrix<double, 4, 4, Eigen::RowMajor> &mat)
 {
