@@ -1,12 +1,16 @@
+#include <pcl/io/pcd_io.h>
+#include <pcl/point_types.h>
+#include <pcl_conversions/pcl_conversions.h>
+#include <pcl_ros/transforms.h>
 #include <ros/ros.h>
 #include <sensor_msgs/PointCloud2.h>
+#include <tf2_geometry_msgs/tf2_geometry_msgs.h>
 #include <tf2_ros/buffer.h>
 #include <tf2_ros/transform_listener.h>
+#include <tf_conversions/tf_eigen.h>
 
 #include <array>
-
-#include "pcl_ros/transforms.h"
-#include "tf2_geometry_msgs/tf2_geometry_msgs.h"
+#include <iostream>
 
 class CloudTransformer
 {
@@ -26,8 +30,6 @@ private:
 
   // Publishers
   ros::Publisher sensor1_pub, sensor2_pub, sensor3_pub, sensor4_pub, combined_pub;
-
-  sensor_msgs::PointCloud2 transformed_cloud1, transformed_cloud2, transformed_cloud3, transformed_cloud4;
 
   // Transform listner
   tf2_ros::Buffer tfBuffer;
@@ -79,6 +81,7 @@ void CloudTransformer::run(ros::NodeHandle &nh)
                                                                                  << sensor3_topic << std::endl
                                                                                  << sensor4_topic);
 
+    // Read input pointclouds
     sensor_msgs::PointCloud2::ConstPtr raw_cloud1 =
         ros::topic::waitForMessage<sensor_msgs::PointCloud2>(sensor1topic, nh);
 
@@ -88,11 +91,10 @@ void CloudTransformer::run(ros::NodeHandle &nh)
     sensor_msgs::PointCloud2::ConstPtr raw_cloud3 =
         ros::topic::waitForMessage<sensor_msgs::PointCloud2>(sensor3topic, nh);
 
-    geometry_msgs::TransformStamped transformStamped1, transformStamped2, transformStamped3, transformStamped4,
-        transformStamped5;
+    // Get the  transformation for each pointcloud
+    geometry_msgs::TransformStamped transformStamped1, transformStamped2, transformStamped3, transformStamped4;
 
-    // geometry_msgs::TransformStamped transformStamped1 =
-    //     *(ros::topic::waitForMessage<geometry_msgs::TransformStamped>("env/transform/sensor1", nh));
+    transformStamped1 = identityTransform("sensor1_frame", "sensor1_frame");
 
     try
     {
@@ -106,15 +108,40 @@ void CloudTransformer::run(ros::NodeHandle &nh)
       continue;
     }
 
-    transformStamped1 = identityTransform("sensor1_frame", "sensor1_frame");
+    // Transform the pointclouds based on tf
+    sensor_msgs::PointCloud2 transformed_cloud1, transformed_cloud2, transformed_cloud3, transformed_cloud4;
 
     pcl_ros::transformPointCloud(world_frame, transformStamped1.transform, *raw_cloud1, transformed_cloud1);
     pcl_ros::transformPointCloud(world_frame, transformStamped2.transform, *raw_cloud2, transformed_cloud2);
     pcl_ros::transformPointCloud(world_frame, transformStamped3.transform, *raw_cloud3, transformed_cloud3);
 
+    // Publish individually transformed pointclouds
     sensor1_pub.publish(transformed_cloud1);
     sensor2_pub.publish(transformed_cloud2);
     sensor3_pub.publish(transformed_cloud3);
+
+    // Convert pointcloud ROS->PCL for further processing
+    pcl::PointCloud<pcl::PointXYZ> pcl_cloud1, pcl_cloud2, pcl_cloud3, pcl_cloud4, pcl_cloud_full;
+
+    pcl::fromROSMsg(transformed_cloud1, pcl_cloud1);
+    pcl::fromROSMsg(transformed_cloud2, pcl_cloud2);
+    pcl::fromROSMsg(transformed_cloud3, pcl_cloud3);
+    pcl::fromROSMsg(transformed_cloud4, pcl_cloud4);
+
+    // Concatenate pointclouds on point basis
+    pcl_cloud_full = pcl_cloud1 + pcl_cloud2 + pcl_cloud3 + pcl_cloud4;
+
+    // Convert pointcloud PCL->ROS
+    sensor_msgs::PointCloud2::Ptr ros_cloud_full(new sensor_msgs::PointCloud2);
+    pcl::PointCloud<pcl::PointXYZ>::Ptr pcl_cloud_full_ptr(new pcl::PointCloud<pcl::PointXYZ>(pcl_cloud_full));
+
+    pcl::toROSMsg(*pcl_cloud_full_ptr, *ros_cloud_full);
+
+    ros_cloud_full->header.frame_id = world_frame;
+    ros_cloud_full->header.stamp = ros::Time::now();
+
+    // Publish combined pointcloud
+    combined_pub.publish(ros_cloud_full);
   }
 }
 
