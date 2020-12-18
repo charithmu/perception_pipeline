@@ -75,11 +75,11 @@ void CloudTransformer::run(ros::NodeHandle &nh)
     std::string sensor3topic = nh.resolveName(sensor3_topic);
     std::string sensor4topic = nh.resolveName(sensor4_topic);
 
-    ROS_INFO_STREAM("Cloud service called; waiting for a PointCloud2 on topics " << std::endl
-                                                                                 << sensor1_topic << std::endl
-                                                                                 << sensor2_topic << std::endl
-                                                                                 << sensor3_topic << std::endl
-                                                                                 << sensor4_topic);
+    // ROS_INFO_STREAM("Cloud service called; waiting for a PointCloud2 on topics " << std::endl
+    //                                                                              << sensor1_topic << std::endl
+    //                                                                              << sensor2_topic << std::endl
+    //                                                                              << sensor3_topic << std::endl
+    //                                                                              << sensor4_topic);
 
     // Read input pointclouds
     sensor_msgs::PointCloud2::ConstPtr raw_cloud1 =
@@ -94,12 +94,13 @@ void CloudTransformer::run(ros::NodeHandle &nh)
     // Get the transformation for each pointcloud
     geometry_msgs::TransformStamped transformStamped1, transformStamped2, transformStamped3, transformStamped4;
 
-    transformStamped1 = identityTransform("sensor1_frame", "sensor1_frame");
+    //transformStamped1 = identityTransform("sensor1_frame", "sensor1_frame");
 
     try
     {
-      transformStamped2 = tfBuffer.lookupTransform(sensor1_frame, sensor2_frame, ros::Time(0), ros::Duration(0.1));
-      transformStamped3 = tfBuffer.lookupTransform(sensor1_frame, sensor3_frame, ros::Time(0), ros::Duration(0.1));
+      transformStamped1 = tfBuffer.lookupTransform(world_frame, sensor1_frame, ros::Time(0), ros::Duration(0.1));
+      transformStamped2 = tfBuffer.lookupTransform(world_frame, sensor2_frame, ros::Time(0), ros::Duration(0.1));
+      transformStamped3 = tfBuffer.lookupTransform(world_frame, sensor3_frame, ros::Time(0), ros::Duration(0.1));
     }
     catch (tf2::TransformException &ex)
     {
@@ -126,10 +127,10 @@ void CloudTransformer::run(ros::NodeHandle &nh)
     pcl::fromROSMsg(transformed_cloud1, pcl_cloud1);
     pcl::fromROSMsg(transformed_cloud2, pcl_cloud2);
     pcl::fromROSMsg(transformed_cloud3, pcl_cloud3);
-    pcl::fromROSMsg(transformed_cloud4, pcl_cloud4);
+    //pcl::fromROSMsg(transformed_cloud4, pcl_cloud4);
 
     // Concatenate pointclouds on point basis
-    pcl_cloud_full = pcl_cloud1 + pcl_cloud2 + pcl_cloud3 + pcl_cloud4;
+    pcl_cloud_full = pcl_cloud1 + pcl_cloud2 + pcl_cloud3;// + pcl_cloud4;
 
     // Convert pointcloud PCL->ROS
     sensor_msgs::PointCloud2::Ptr ros_cloud_full(new sensor_msgs::PointCloud2);
@@ -170,9 +171,9 @@ geometry_msgs::TransformStamped CloudTransformer::identityTransform(std::string 
   empty_transform.transform.rotation.z = q.z();
   empty_transform.transform.rotation.w = q.w();
 
-  std::cout << "rot: " << rot << std::endl << q.x() << " " << q.y() << " " << q.z() << " " << std::endl;
+  //std::cout << "rot: " << rot << std::endl << q.x() << " " << q.y() << " " << q.z() << " " << std::endl;
 
-  ROS_INFO("transformation: %s to world", child_frame.c_str());
+  //ROS_INFO("transformation: %s to world", child_frame.c_str());
 
   return empty_transform;
 }

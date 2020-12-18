@@ -19,38 +19,44 @@ int main(int argc, char **argv)
   ros::NodeHandle priv_nh_("~");
 
   // Setup Parameters
-  std::vector<double> trans12_param, trans13_param, trans14_param;
+  std::vector<double> trans_world_param, trans12_param, trans13_param, trans14_param;
 
-  if (!priv_nh_.getParam("sensor12_transform", trans12_param))
+  if (!priv_nh_.getParam("world_sensor1_transform", trans_world_param))
     ROS_ERROR("Node: static_transforms:: Failed to get parameter sensor12_transform from server.");
 
-  if (!priv_nh_.getParam("sensor13_transform", trans13_param))
+  if (!priv_nh_.getParam("sensor1_sensor2_transform", trans12_param))
+    ROS_ERROR("Node: static_transforms:: Failed to get parameter sensor12_transform from server.");
+
+  if (!priv_nh_.getParam("sensor1_sensor3_transform", trans13_param))
     ROS_ERROR("Node: static_transforms:: Failed to get parameter sensor13_transform from server.");
 
-  if (!priv_nh_.getParam("sensor14_transform", trans14_param))
+  if (!priv_nh_.getParam("sensor1_sensor4_transform", trans14_param))
     ROS_ERROR("Node: static_transforms:: Failed to get parameter sensor14_transform from server.");
 
   // Populate transform matrices from parameters
+  Eigen::Matrix<double, 4, 4, Eigen::RowMajor> transworld(trans_world_param.data());
   Eigen::Matrix<double, 4, 4, Eigen::RowMajor> trans12(trans12_param.data());
   Eigen::Matrix<double, 4, 4, Eigen::RowMajor> trans13(trans13_param.data());
   Eigen::Matrix<double, 4, 4, Eigen::RowMajor> trans14(trans14_param.data());
 
-  std::cout << trans12 << std::endl << trans13 << std::endl << trans14 << std::endl;
+  //std::cout << trans12 << std::endl << trans13 << std::endl << trans14 << std::endl;
 
   // Define static tf publisher
   static tf2_ros::StaticTransformBroadcaster static_transform_broadcaster;
 
-  geometry_msgs::TransformStamped sensor12_transformStamped, sensor13_transformStamped, sensor14_transformStamped;
+  geometry_msgs::TransformStamped world_transformStamped, sensor12_transformStamped, sensor13_transformStamped, sensor14_transformStamped;
 
   // Get tf messages built for all the sensors
+  world_transformStamped = get_static_transform("world_frame", "sensor1_frame", transworld);
   sensor12_transformStamped = get_static_transform("sensor1_frame", "sensor2_frame", trans12);
   sensor13_transformStamped = get_static_transform("sensor1_frame", "sensor3_frame", trans13);
   sensor14_transformStamped = get_static_transform("sensor1_frame", "sensor4_frame", trans14);
 
   // Publish all tf messeges to tf_static
-  const std::vector<geometry_msgs::TransformStamped> alltransforms{ sensor12_transformStamped,
-                                                                    sensor13_transformStamped,
-                                                                    sensor14_transformStamped };
+  const std::vector<geometry_msgs::TransformStamped> alltransforms{world_transformStamped,
+                                                                   sensor12_transformStamped,
+                                                                   sensor13_transformStamped,
+                                                                   sensor14_transformStamped};
   static_transform_broadcaster.sendTransform(alltransforms);
 
   ros::spin();
@@ -75,7 +81,7 @@ geometry_msgs::TransformStamped get_static_transform(std::string parent_frame, s
   Eigen::Matrix3d rot;
   rot = mat.block<3, 3>(0, 0);
 
-  std::cout << "rot: " << rot << std::endl;
+  //std::cout << "rot: " << rot << std::endl;
 
   const Eigen::Quaterniond q(rot);
 
@@ -84,7 +90,7 @@ geometry_msgs::TransformStamped get_static_transform(std::string parent_frame, s
   stat_trans.transform.rotation.z = q.z();
   stat_trans.transform.rotation.w = q.w();
 
-  ROS_INFO("Publishing transformation: %s to %s", child_frame.c_str(), parent_frame.c_str());
+  //ROS_INFO("Publishing transformation: %s to %s", child_frame.c_str(), parent_frame.c_str());
 
   return stat_trans;
 }

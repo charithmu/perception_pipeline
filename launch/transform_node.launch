@@ -1,17 +1,23 @@
 <launch>
   <node name="transform_node" pkg="perception_pipeline" type="transformpipe_node" output="screen">
     <rosparam>
-        world_frame: "sensor1_frame" 
+        world_frame: "world_frame" 
 
         sensor1_frame: "sensor1_frame" 
         sensor2_frame: "sensor2_frame" 
         sensor3_frame: "sensor3_frame" 
         sensor4_frame: "sensor4_frame" 
 
-        sensor1_topic: "env/sensor1/points" 
+        <!-- sensor1_topic: "env/sensor1/points" 
         sensor2_topic: "env/sensor2/points" 
         sensor3_topic: "env/sensor3/points" 
+        sensor4_topic: "env/sensor4/points" -->
+
+        sensor1_topic: "/sensor1_os_cloud_node/points" 
+        sensor2_topic: "/sensor2_os_cloud_node/points" 
+        sensor3_topic: "/sensor3_os_cloud_node/points" 
         sensor4_topic: "env/sensor4/points"
+        
     </rosparam>
   </node>
 
