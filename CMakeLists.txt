@@ -104,6 +104,7 @@ catkin_package(
 ## Your package locations should be listed before other locations
 # include_directories(include)
 include_directories(
+        src
         ${catkin_INCLUDE_DIRS}
         ${PCL_INCLUDE_DIRS}
 )
@@ -117,6 +118,7 @@ include_directories(
 add_executable(perception_node src/perception_node.cpp)
 add_executable(transformpipe_node src/transformpipe_node.cpp)
 add_executable(static_transforms src/static_transforms.cpp)
+add_executable(sensor_playback src/sensor_playback.cpp)
 
 ## Add cmake target dependencies of the executable/library
 ## as an example, message headers may need to be generated before nodes
@@ -126,6 +128,7 @@ add_executable(static_transforms src/static_transforms.cpp)
 target_link_libraries(perception_node ${catkin_LIBRARIES} ${PCL_LIBRARIES})
 target_link_libraries(transformpipe_node ${catkin_LIBRARIES} ${PCL_LIBRARIES})
 target_link_libraries(static_transforms ${catkin_LIBRARIES} ${PCL_LIBRARIES})
+target_link_libraries(sensor_playback ${catkin_LIBRARIES} ${PCL_LIBRARIES})
 
 #############
 ## Install ##

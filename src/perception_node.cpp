@@ -1,4 +1,5 @@
 #include <ros/ros.h>
+#include <ros/console.h>
 #include <sensor_msgs/PointCloud2.h>  //hydro
 #include <tf/transform_broadcaster.h>
 #include <tf/transform_datatypes.h>

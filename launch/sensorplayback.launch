@@ -6,13 +6,16 @@
     <arg name="file_3" default="/pos3/pos3.bag" />
 
     <node pkg="rosbag" type="play" name="sensor1_playback" output="screen" 
-    args="--clock -l $(arg prefix)$(arg file_1) /os_cloud_node/points:=/env/sensor1/points"/>
+    args="$(arg prefix)$(arg file_1) /os_cloud_node/points:=/env/sensor1/points"/>
 
     <node pkg="rosbag" type="play" name="sensor2_playback" output="screen" 
-    args="--clock -l $(arg prefix)$(arg file_2) /os_cloud_node/points:=/env/sensor2/points"/>
+    args="$(arg prefix)$(arg file_2) /os_cloud_node/points:=/env/sensor2/points"/>
 
     <node pkg="rosbag" type="play" name="sensor3_playback" output="screen"
-    args="--clock -l $(arg prefix)$(arg file_3) /os_cloud_node/points:=/env/sensor3/points"/>
+    args="$(arg prefix)$(arg file_3) /os_cloud_node/points:=/env/sensor3/points"/>
+
+    
+    <node name="sensor_playback" pkg="perception_pipeline" type="sensor_playback" output="screen"></node>
 
     <!-- add dashdash clock -->
     <!-- use dashdash-hz=1 to throttle -->
