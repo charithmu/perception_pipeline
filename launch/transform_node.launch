@@ -1,40 +1,25 @@
 <launch>
-  <node name="transform_node" pkg="perception_pipeline" type="transformpipe_node" output="screen">
-    <rosparam>
-        world_frame: "world_frame" 
-
-        sensor1_frame: "sensor1_frame" 
-        sensor2_frame: "sensor2_frame" 
-        sensor3_frame: "sensor3_frame" 
-        sensor4_frame: "sensor4_frame" 
-
-        sensor1_topic: "env/sensor1/points/synced" 
-        sensor2_topic: "env/sensor2/points/synced" 
-        sensor3_topic: "env/sensor3/points/synced" 
-        sensor4_topic: "env/sensor4/points/synced"
-
-        <!-- sensor1_topic: "/sensor1_os_cloud_node/points" 
-        sensor2_topic: "/sensor2_os_cloud_node/points" 
-        sensor3_topic: "/sensor3_os_cloud_node/points" 
-        sensor4_topic: "env/sensor4/points" -->
-
-        voxel_leaf_size: 0.01    <!-- mm -->
-        x_filter_min: -2.5       <!-- m -->
-        x_filter_max: 2.5        <!-- m -->
-        y_filter_min: -2.5       <!-- m -->
-        y_filter_max: 2.5        <!-- m -->
-        z_filter_min: -2.5       <!-- m -->
-        z_filter_max: 2.5        <!-- m -->
-
-    </rosparam>
-  </node>
-
-  <node name="static_transforms" pkg="perception_pipeline" type="static_transforms" output="screen">
-    <rosparam file="$(find perception_pipeline)/config/transforms.yaml" />
-  </node>
-
-  <!-- <node pkg="tf2_ros" type="static_transform_publisher" name="sensor2_transformer" args="1.25127 -2.59854 0.382797 -0.0045495 -0.003113 -0.7406218 0.6718995 sensor1_frame sensor2_frame" />
-
-  <node pkg="tf2_ros" type="static_transform_publisher" name="sensor3_transformer" args="-1.72954 -1.3173 0.216273 0.0177781 -0.0025568 -0.7324981 0.6805321 sensor1_frame sensor3_frame" /> -->
-
+    <node name="transform_node" pkg="perception_pipeline" type="transformpipe_node" output="screen">
+        <rosparam>
+            world_frame: "world_frame"
+            sensor1_frame: "sensor1_frame"
+            sensor2_frame: "sensor2_frame"
+            sensor3_frame: "sensor3_frame"
+            sensor4_frame: "sensor4_frame"
+            sensor1_topic: "env/sensor1/points/synced"
+            sensor2_topic: "env/sensor2/points/synced"
+            sensor3_topic: "env/sensor3/points/synced"
+            sensor4_topic: "env/sensor4/points/synced"
+            voxel_leaf_size: 0.01
+            x_filter_min: -2.5
+            x_filter_max: 2
+            y_filter_min: -5
+            y_filter_max: 5
+            z_filter_min: -1
+            z_filter_max: 1.3
+        </rosparam>
+    </node>
+    <node name="static_transforms" pkg="perception_pipeline" type="static_transforms" output="screen">
+        <rosparam file="$(find perception_pipeline)/config/transforms.yaml" />
+    </node>
 </launch>

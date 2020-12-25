@@ -43,19 +43,16 @@ Statistics stats;
 
 // Parameters used gloablly
 std::string world_frame;
-float voxel_leaf_size;
+float voxel_leaf_size;  // in mm
 float x_filter_min, x_filter_max, y_filter_min, y_filter_max, z_filter_min, z_filter_max;
-
-// Publishers
-ros::Publisher sensor1_pub, sensor2_pub, sensor3_pub, sensor4_pub, combined_pub, voxelfilter_pub, passfilter_pub;
-
 // static transforms
 geometry_msgs::TransformStamped transformStamped1, transformStamped2, transformStamped3, transformStamped4;
+// Publishers
+ros::Publisher sensor1_pub, sensor2_pub, sensor3_pub, sensor4_pub, combined_pub, voxelfilter_pub, passfilter_pub;
 
 /*
  * Utility Functions
  */
-
 // Identity-transform creator
 geometry_msgs::TransformStamped identityTransform(std::string parent_frame, std::string child_frame)
 {
@@ -98,108 +95,106 @@ void callback(const sensor_msgs::PointCloud2ConstPtr &raw_cloud1, const sensor_m
   stats.startCycle();
 
   /*
-   * Transform and publish
+   * TRANSFORM POINTCLOUDS AND PUBLISH SEPARATELY
    */
-  // Transform the pointclouds based on tf
-  sensor_msgs::PointCloud2 transformed_cloud1, transformed_cloud2, transformed_cloud3, transformed_cloud4;
+  ROSPointCloud ros_cloud1_transformed, ros_cloud2_transformed, ros_cloud3_transformed, ros_cloud4_transformed;
 
-  pcl_ros::transformPointCloud(world_frame, transformStamped1.transform, *raw_cloud1, transformed_cloud1);
-  pcl_ros::transformPointCloud(world_frame, transformStamped2.transform, *raw_cloud2, transformed_cloud2);
-  pcl_ros::transformPointCloud(world_frame, transformStamped3.transform, *raw_cloud3, transformed_cloud3);
+  pcl_ros::transformPointCloud(world_frame, transformStamped1.transform, *raw_cloud1, ros_cloud1_transformed);
+  pcl_ros::transformPointCloud(world_frame, transformStamped2.transform, *raw_cloud2, ros_cloud2_transformed);
+  pcl_ros::transformPointCloud(world_frame, transformStamped3.transform, *raw_cloud3, ros_cloud3_transformed);
+  // pcl_ros::transformPointCloud(world_frame, transformStamped4.transform, *raw_cloud4, ros_cloud3_transformed);
 
-  // Publish individually transformed pointclouds
-  sensor1_pub.publish(transformed_cloud1);
-  sensor2_pub.publish(transformed_cloud2);
-  sensor3_pub.publish(transformed_cloud3);
+  sensor1_pub.publish(ros_cloud1_transformed);
+  sensor2_pub.publish(ros_cloud2_transformed);
+  sensor3_pub.publish(ros_cloud3_transformed);
+  // sensor4_pub.publish(ros_cloud4_transformed);
 
-  // Convert pointcloud ROS->PCL for further processing
-  pcl::PointCloud<pcl::PointXYZI> pcl_cloud1, pcl_cloud2, pcl_cloud3, pcl_cloud4, pcl_cloud_full;
+  /*
+   * CONVERT POINTCLOUDS ROS->PCL
+   */
+  PCLPointCloud pcl_cloud1, pcl_cloud2, pcl_cloud3, pcl_cloud4, pcl_cloud_full;
 
-  pcl::fromROSMsg(transformed_cloud1, pcl_cloud1);
-  pcl::fromROSMsg(transformed_cloud2, pcl_cloud2);
-  pcl::fromROSMsg(transformed_cloud3, pcl_cloud3);
-  // pcl::fromROSMsg(transformed_cloud4, pcl_cloud4);
+  pcl::fromROSMsg(ros_cloud1_transformed, pcl_cloud1);
+  pcl::fromROSMsg(ros_cloud2_transformed, pcl_cloud2);
+  pcl::fromROSMsg(ros_cloud3_transformed, pcl_cloud3);
+  // pcl::fromROSMsg(ros_cloud4_transformed, pcl_cloud4);
 
-  // Concatenate pointclouds on point basis
+  /*
+   * CONCATNATE POINTCLOUDS INTO SINGLE COMBINED POINTCLOUD
+   */
   pcl_cloud_full = pcl_cloud1 + pcl_cloud2 + pcl_cloud3;  // + pcl_cloud4;
 
-  // Convert pointcloud PCL->ROS
-  sensor_msgs::PointCloud2::Ptr ros_cloud_full(new sensor_msgs::PointCloud2);
-  pcl::PointCloud<pcl::PointXYZI>::Ptr pcl_cloud_full_ptr(new pcl::PointCloud<pcl::PointXYZI>(pcl_cloud_full));
+  /*
+   * PUBLISH COMBINED POINTCLOUD
+   */
+  ROSPointCloudPtr ros_cloud_full_ptr(new ROSPointCloud);
+  PCLPointCloudPtr pcl_cloud_full_ptr(new PCLPointCloud(pcl_cloud_full));
 
-  pcl::toROSMsg(*pcl_cloud_full_ptr, *ros_cloud_full);
+  pcl::toROSMsg(*pcl_cloud_full_ptr, *ros_cloud_full_ptr);
+  ros_cloud_full_ptr->header.frame_id = world_frame;
+  ros_cloud_full_ptr->header.stamp = ros::Time::now();
+  combined_pub.publish(ros_cloud_full_ptr);
 
-  ros_cloud_full->header.frame_id = world_frame;
-  ros_cloud_full->header.stamp = ros::Time::now();
-
-  // Publish combined pointcloud
-  combined_pub.publish(ros_cloud_full);
-
-  stats.finishCycle();
-
-  // voxel grid filter
-  float voxel_leaf_size = 0.01;  // millimeters
-
-  pcl::PointCloud<pcl::PointXYZI>::Ptr cloud_ptr = pcl_cloud_full_ptr;
-  pcl::PointCloud<pcl::PointXYZI>::Ptr cloud_voxel_filtered(new pcl::PointCloud<pcl::PointXYZI>());
+  /*
+   * VOXEL GRID FILTER AND PUBLISH
+   */
+  PCLPointCloudPtr pcl_cloud_voxel_input = pcl_cloud_full_ptr;
+  PCLPointCloudPtr pcl_cloud_voxel_filtered(new PCLPointCloud());
 
   pcl::VoxelGrid<pcl::PointXYZI> voxel_filter;
 
-  voxel_filter.setInputCloud(cloud_ptr);
+  voxel_filter.setInputCloud(pcl_cloud_voxel_input);
   voxel_filter.setLeafSize(voxel_leaf_size, voxel_leaf_size, voxel_leaf_size);
-  voxel_filter.filter(*cloud_voxel_filtered);
+  voxel_filter.filter(*pcl_cloud_voxel_filtered);
 
-  // ROS_INFO_STREAM("Original cloud  had " << cloud_ptr->size() << " points");
-  // ROS_INFO_STREAM("Downsampled cloud  with " << cloud_voxel_filtered->size() << " points");
+  // ROS_INFO_STREAM("Original cloud  had " << pcl_cloud_voxel_input->size() << " points");
+  // ROS_INFO_STREAM("Downsampled cloud  with " << pcl_cloud_voxel_filtered->size() << " points");
 
-  ///////////// Convert pointcloud PCL->ROS & Publish combined pointcloud
-  sensor_msgs::PointCloud2::Ptr ros_cloud_voxel(new sensor_msgs::PointCloud2);
+  ROSPointCloudPtr ros_cloud_voxel_filtered(new ROSPointCloud);
 
-  pcl::toROSMsg(*cloud_voxel_filtered, *ros_cloud_voxel);
-  ros_cloud_voxel->header.frame_id = world_frame;
-  ros_cloud_voxel->header.stamp = ros::Time::now();
-  voxelfilter_pub.publish(ros_cloud_voxel);
-  /////////////
+  pcl::toROSMsg(*pcl_cloud_voxel_filtered, *ros_cloud_voxel_filtered);
+  ros_cloud_voxel_filtered->header.frame_id = world_frame;
+  ros_cloud_voxel_filtered->header.stamp = ros::Time::now();
+  voxelfilter_pub.publish(ros_cloud_voxel_filtered);
 
-  // pass through filters
-  float x_filter_min, x_filter_max, y_filter_min, y_filter_max, z_filter_min, z_filter_max;
-  pcl::PointCloud<pcl::PointXYZI> xf_cloud, yf_cloud, zf_cloud;
-
+  /*
+   * PASS THROUGH FILTERS FOR X,Y,Z CROP AND PUBLISH
+   */
+  PCLPointCloud pcl_cloud_xf_out, pcl_cloud_yf_out, pcl_cloud_zf_out;
+  pcl::PassThrough<pcl::PointXYZI> pass_x, pass_y, pass_z;
   // x
-  pcl::PassThrough<pcl::PointXYZI> pass_x;
-  pass_x.setInputCloud(cloud_voxel_filtered);  // input from last filter
+  PCLPointCloudPtr pcl_cloud_xf_in = pcl_cloud_voxel_filtered;
+  pass_x.setInputCloud(pcl_cloud_xf_in);
   pass_x.setFilterFieldName("x");
   pass_x.setFilterLimits(x_filter_min, x_filter_max);
-  pass_x.filter(xf_cloud);
-
-  pcl::PointCloud<pcl::PointXYZI>::Ptr xf_cloud_ptr(new pcl::PointCloud<pcl::PointXYZI>(xf_cloud));
+  pass_x.filter(pcl_cloud_xf_out);
   // y
-  pcl::PassThrough<pcl::PointXYZI> pass_y;
-  pass_y.setInputCloud(xf_cloud_ptr);
+  PCLPointCloudPtr pcl_cloud_yf_in(new PCLPointCloud(pcl_cloud_xf_out));
+  pass_y.setInputCloud(pcl_cloud_yf_in);
   pass_y.setFilterFieldName("y");
   pass_y.setFilterLimits(y_filter_min, y_filter_max);
-  pass_y.filter(yf_cloud);
-
-  pcl::PointCloud<pcl::PointXYZI>::Ptr yf_cloud_ptr(new pcl::PointCloud<pcl::PointXYZI>(yf_cloud));
+  pass_y.filter(pcl_cloud_yf_out);
   // z
-  pcl::PassThrough<pcl::PointXYZI> pass_z;
-  pass_z.setInputCloud(yf_cloud_ptr);
+  PCLPointCloudPtr pcl_cloud_zf_in(new PCLPointCloud(pcl_cloud_yf_out));
+  pass_z.setInputCloud(pcl_cloud_zf_in);
   pass_z.setFilterFieldName("z");
   pass_z.setFilterLimits(z_filter_min, z_filter_max);
-  pass_z.filter(zf_cloud);
+  pass_z.filter(pcl_cloud_zf_out);
 
-  ///////////// Convert pointcloud PCL->ROS & Publish combined pointcloud
-  pcl::PointCloud<pcl::PointXYZI>::Ptr pcl_cloud_passthorugh_ptr(new pcl::PointCloud<pcl::PointXYZI>(zf_cloud));
-  sensor_msgs::PointCloud2::Ptr ros_cloud_passthrough(new sensor_msgs::PointCloud2);
+  PCLPointCloudPtr pcl_cloud_passthorugh_ptr(new PCLPointCloud(pcl_cloud_zf_out));
+  ROSPointCloudPtr ros_cloud_passthrough(new ROSPointCloud);
 
   pcl::toROSMsg(*pcl_cloud_passthorugh_ptr, *ros_cloud_passthrough);
   ros_cloud_passthrough->header.frame_id = world_frame;
   ros_cloud_passthrough->header.stamp = ros::Time::now();
   passfilter_pub.publish(ros_cloud_passthrough);
-  /////////////
+
+  // end stat measurements
+  stats.finishCycle();
+
+  
 }
 
-// main
 int main(int argc, char *argv[])
 {
   ros::init(argc, argv, "transformpipe_node");
@@ -223,15 +218,15 @@ int main(int argc, char *argv[])
   sensor3_topic = priv_nh_.param<std::string>("sensor3_topic", "env/sensor3/points");
   sensor4_topic = priv_nh_.param<std::string>("sensor4_topic", "env/sensor4/points");
 
-  sensor1_pub = nh.advertise<sensor_msgs::PointCloud2>("env/sensor1/points/aligned", 1);
-  sensor2_pub = nh.advertise<sensor_msgs::PointCloud2>("env/sensor2/points/aligned", 1);
-  sensor3_pub = nh.advertise<sensor_msgs::PointCloud2>("env/sensor3/points/aligned", 1);
-  sensor4_pub = nh.advertise<sensor_msgs::PointCloud2>("env/sensor4/points/aligned", 1);
+  sensor1_pub = nh.advertise<ROSPointCloud>("env/sensor1/points/aligned", 1);
+  sensor2_pub = nh.advertise<ROSPointCloud>("env/sensor2/points/aligned", 1);
+  sensor3_pub = nh.advertise<ROSPointCloud>("env/sensor3/points/aligned", 1);
+  sensor4_pub = nh.advertise<ROSPointCloud>("env/sensor4/points/aligned", 1);
 
-  combined_pub = nh.advertise<sensor_msgs::PointCloud2>("env/combined/points", 1);
+  combined_pub = nh.advertise<ROSPointCloud>("env/combined/points", 1);
 
-  voxelfilter_pub = nh.advertise<sensor_msgs::PointCloud2>("env/combined/voxelfilter", 1);
-  passfilter_pub = nh.advertise<sensor_msgs::PointCloud2>("env/combined/passfilter", 1);
+  voxelfilter_pub = nh.advertise<ROSPointCloud>("env/combined/voxelfilter", 1);
+  passfilter_pub = nh.advertise<ROSPointCloud>("env/combined/passfilter", 1);
 
   voxel_leaf_size = priv_nh_.param<float>("voxel_leaf_size", 0.1);
   x_filter_min = priv_nh_.param<float>("x_filter_min", -2.5);
@@ -244,7 +239,6 @@ int main(int argc, char *argv[])
   // Transform listner
   tf2_ros::Buffer tfBuffer;
   tf2_ros::TransformListener tfListener(tfBuffer);
-  // tfListener = new tf2_ros::TransformListener(tfBuffer);
 
   // Get the transformation for each pointcloud
   try
@@ -257,7 +251,6 @@ int main(int argc, char *argv[])
   {
     ROS_WARN("%s", ex.what());
     ros::Duration(1.0).sleep();
-    // continue;
   }
 
   sensor1_topic_res = nh.resolveName(sensor1_topic);
@@ -265,9 +258,9 @@ int main(int argc, char *argv[])
   sensor3_topic_res = nh.resolveName(sensor3_topic);
   sensor4_topic_res = nh.resolveName(sensor4_topic);
 
-  message_filters::Subscriber<sensor_msgs::PointCloud2> s1(nh, sensor1_topic_res, 100);
-  message_filters::Subscriber<sensor_msgs::PointCloud2> s2(nh, sensor2_topic_res, 100);
-  message_filters::Subscriber<sensor_msgs::PointCloud2> s3(nh, sensor3_topic_res, 100);
+  message_filters::Subscriber<ROSPointCloud> s1(nh, sensor1_topic_res, 100);
+  message_filters::Subscriber<ROSPointCloud> s2(nh, sensor2_topic_res, 100);
+  message_filters::Subscriber<ROSPointCloud> s3(nh, sensor3_topic_res, 100);
 
   // typedef message_filters::sync_policies::ExactTime<PointCloud2, PointCloud2, PointCloud2> ExactTimePolicy;
   // typedef message_filters::sync_policies::ApproximateTime<PointCloud2, PointCloud2, PointCloud2> ApproxTimePolicy;
@@ -275,8 +268,7 @@ int main(int argc, char *argv[])
   // message_filters::Synchronizer<ApproxTimePolicy> policysync(ApproxTimePolicy(10), s1, s2, s3);
   // policysync.registerCallback(boost::bind(&callback, _1, _2, _3));
 
-  message_filters::TimeSynchronizer<sensor_msgs::PointCloud2, sensor_msgs::PointCloud2, sensor_msgs::PointCloud2>
-      timesync(s1, s2, s3, 100);
+  message_filters::TimeSynchronizer<ROSPointCloud, ROSPointCloud, ROSPointCloud> timesync(s1, s2, s3, 100);
   timesync.registerCallback(boost::bind(&callback, _1, _2, _3));
 
   ros::spin();
