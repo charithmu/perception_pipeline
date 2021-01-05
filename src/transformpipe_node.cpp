@@ -2,9 +2,11 @@
 #include <pcl/filters/passthrough.h>
 #include <pcl/filters/voxel_grid.h>
 #include <pcl/io/pcd_io.h>
+#include <pcl/octree/octree_pointcloud_voxelcentroid.h>
 #include <pcl/point_types.h>
 #include <pcl_conversions/pcl_conversions.h>
 #include <pcl_ros/transforms.h>
+
 // tf
 #include <tf2_geometry_msgs/tf2_geometry_msgs.h>
 #include <tf2_ros/buffer.h>
@@ -22,6 +24,7 @@
 #include <sensor_msgs/PointCloud2.h>
 // ros
 #include <ros/console.h>
+#include <ros/package.h>
 #include <ros/ros.h>
 // c++
 #include <statistics.h>
@@ -45,11 +48,16 @@ Statistics stats;
 std::string world_frame;
 float voxel_leaf_size;  // in mm
 float x_filter_min, x_filter_max, y_filter_min, y_filter_max, z_filter_min, z_filter_max;
+bool save_pcd;
+float save_interval;
+std::string save_path_full;
 // static transforms
 geometry_msgs::TransformStamped transformStamped1, transformStamped2, transformStamped3, transformStamped4;
 // Publishers
-ros::Publisher sensor1_pub, sensor2_pub, sensor3_pub, sensor4_pub, combined_pub, voxelfilter_pub, passfilter_pub;
-
+ros::Publisher sensor1_pub, sensor2_pub, sensor3_pub, sensor4_pub, combined_pub;
+ros::Publisher octreefilter_pub, voxelfilter_pub, passfilter_pub;
+// last frame time
+ros::Time lastSavedTimeStamp;
 /*
  * Utility Functions
  */
@@ -123,39 +131,57 @@ void callback(const sensor_msgs::PointCloud2ConstPtr &raw_cloud1, const sensor_m
    * CONCATNATE POINTCLOUDS INTO SINGLE COMBINED POINTCLOUD
    */
   pcl_cloud_full = pcl_cloud1 + pcl_cloud2 + pcl_cloud3;  // + pcl_cloud4;
+  // set timestamp of full pointcloud to current timestamp
+  pcl_conversions::toPCL(ros::Time::now(), pcl_cloud_full.header.stamp);
 
   /*
    * PUBLISH COMBINED POINTCLOUD
    */
   ROSPointCloudPtr ros_cloud_full_ptr(new ROSPointCloud);
   PCLPointCloudPtr pcl_cloud_full_ptr(new PCLPointCloud(pcl_cloud_full));
-
   pcl::toROSMsg(*pcl_cloud_full_ptr, *ros_cloud_full_ptr);
-  ros_cloud_full_ptr->header.frame_id = world_frame;
-  ros_cloud_full_ptr->header.stamp = ros::Time::now();
   combined_pub.publish(ros_cloud_full_ptr);
+
+  /*
+   * OCTREE VOXEL CENTROID FILTER AND PUBLISH
+   */
+  PCLPointCloudPtr pcl_cloud_octree_input = pcl_cloud_full_ptr;
+
+  pcl::octree::OctreePointCloudVoxelCentroid<pcl::PointXYZI> octree(voxel_leaf_size);
+  octree.setInputCloud(pcl_cloud_octree_input);
+  octree.defineBoundingBox();
+  octree.addPointsFromInputCloud();
+
+  pcl::PointCloud<pcl::PointXYZI>::VectorType voxelCentroids;
+  octree.getVoxelCentroids(voxelCentroids);
+
+  PCLPointCloud pcl_cloud_octree_filtered;
+  pcl_cloud_octree_filtered.width = voxelCentroids.size();
+  pcl_cloud_octree_filtered.height = 1;
+  pcl_cloud_octree_filtered.is_dense = true;
+  pcl_cloud_octree_filtered.points.resize(pcl_cloud_octree_filtered.width * pcl_cloud_octree_filtered.height);
+  pcl_cloud_octree_filtered.points = voxelCentroids;
+  pcl_cloud_octree_filtered.header = pcl_cloud_full.header;
+
+  ROSPointCloudPtr ros_cloud_octree_filtered(new ROSPointCloud);
+  pcl::toROSMsg(pcl_cloud_octree_filtered, *ros_cloud_octree_filtered);
+  octreefilter_pub.publish(ros_cloud_octree_filtered);
 
   /*
    * VOXEL GRID FILTER AND PUBLISH
    */
-  PCLPointCloudPtr pcl_cloud_voxel_input = pcl_cloud_full_ptr;
-  PCLPointCloudPtr pcl_cloud_voxel_filtered(new PCLPointCloud());
+  // PCLPointCloudPtr pcl_cloud_voxel_input = pcl_cloud_full_ptr;
+  // PCLPointCloudPtr pcl_cloud_voxel_filtered(new PCLPointCloud());
 
-  pcl::VoxelGrid<pcl::PointXYZI> voxel_filter;
+  // pcl::VoxelGrid<pcl::PointXYZI> voxel_filter;
 
-  voxel_filter.setInputCloud(pcl_cloud_voxel_input);
-  voxel_filter.setLeafSize(voxel_leaf_size, voxel_leaf_size, voxel_leaf_size);
-  voxel_filter.filter(*pcl_cloud_voxel_filtered);
+  // voxel_filter.setInputCloud(pcl_cloud_voxel_input);
+  // voxel_filter.setLeafSize(voxel_leaf_size, voxel_leaf_size, voxel_leaf_size);
+  // voxel_filter.filter(*pcl_cloud_voxel_filtered);
 
-  // ROS_INFO_STREAM("Original cloud  had " << pcl_cloud_voxel_input->size() << " points");
-  // ROS_INFO_STREAM("Downsampled cloud  with " << pcl_cloud_voxel_filtered->size() << " points");
-
-  ROSPointCloudPtr ros_cloud_voxel_filtered(new ROSPointCloud);
-
-  pcl::toROSMsg(*pcl_cloud_voxel_filtered, *ros_cloud_voxel_filtered);
-  ros_cloud_voxel_filtered->header.frame_id = world_frame;
-  ros_cloud_voxel_filtered->header.stamp = ros::Time::now();
-  voxelfilter_pub.publish(ros_cloud_voxel_filtered);
+  // ROSPointCloudPtr ros_cloud_voxel_filtered(new ROSPointCloud);
+  // pcl::toROSMsg(*pcl_cloud_voxel_filtered, *ros_cloud_voxel_filtered);
+  // voxelfilter_pub.publish(ros_cloud_voxel_filtered);
 
   /*
    * PASS THROUGH FILTERS FOR X,Y,Z CROP AND PUBLISH
@@ -163,7 +189,8 @@ void callback(const sensor_msgs::PointCloud2ConstPtr &raw_cloud1, const sensor_m
   PCLPointCloud pcl_cloud_xf_out, pcl_cloud_yf_out, pcl_cloud_zf_out;
   pcl::PassThrough<pcl::PointXYZI> pass_x, pass_y, pass_z;
   // x
-  PCLPointCloudPtr pcl_cloud_xf_in = pcl_cloud_voxel_filtered;
+  // PCLPointCloudPtr pcl_cloud_xf_in = pcl_cloud_voxel_filtered;
+  PCLPointCloudPtr pcl_cloud_xf_in(new PCLPointCloud(pcl_cloud_octree_filtered));
   pass_x.setInputCloud(pcl_cloud_xf_in);
   pass_x.setFilterFieldName("x");
   pass_x.setFilterLimits(x_filter_min, x_filter_max);
@@ -185,14 +212,25 @@ void callback(const sensor_msgs::PointCloud2ConstPtr &raw_cloud1, const sensor_m
   ROSPointCloudPtr ros_cloud_passthrough(new ROSPointCloud);
 
   pcl::toROSMsg(*pcl_cloud_passthorugh_ptr, *ros_cloud_passthrough);
-  ros_cloud_passthrough->header.frame_id = world_frame;
-  ros_cloud_passthrough->header.stamp = ros::Time::now();
   passfilter_pub.publish(ros_cloud_passthrough);
 
   // end stat measurements
   stats.finishCycle();
 
-  
+  /*
+   * SAVE TO *.PCD FILE ACCORDING TO GIVEN INTERVAL
+   */
+
+  ros::Time currentTimeStamp = ros_cloud_passthrough->header.stamp;
+  ros::Duration timeSinceLast = currentTimeStamp - lastSavedTimeStamp;
+  if (save_pcd == true && timeSinceLast >= ros::Duration(save_interval))
+  {
+    // save to PCD && reset lastTimeStamp
+    lastSavedTimeStamp = currentTimeStamp;
+    std::string file_name = save_path_full + "/" + "pcd-" + std::to_string(currentTimeStamp.toNSec()) + ".pcd";
+    pcl::io::savePCDFileASCII(file_name, *pcl_cloud_passthorugh_ptr);
+    ROS_INFO("Saved pointcloud with %lu points to %s", (*pcl_cloud_passthorugh_ptr).size(), file_name.c_str());
+  }
 }
 
 int main(int argc, char *argv[])
@@ -225,6 +263,7 @@ int main(int argc, char *argv[])
 
   combined_pub = nh.advertise<ROSPointCloud>("env/combined/points", 1);
 
+  octreefilter_pub = nh.advertise<ROSPointCloud>("env/combined/octreefilter", 1);
   voxelfilter_pub = nh.advertise<ROSPointCloud>("env/combined/voxelfilter", 1);
   passfilter_pub = nh.advertise<ROSPointCloud>("env/combined/passfilter", 1);
 
@@ -235,6 +274,11 @@ int main(int argc, char *argv[])
   y_filter_max = priv_nh_.param<float>("y_filter_max", 2.5);
   z_filter_min = priv_nh_.param<float>("z_filter_min", -2.5);
   z_filter_max = priv_nh_.param<float>("z_filter_max", 2.5);
+
+  save_pcd = priv_nh_.param<bool>("save_pcd", false);
+  save_interval = priv_nh_.param<float>("save_interval", 2.0);
+  std::string save_path = priv_nh_.param<std::string>("save_path", "output");
+  save_path_full = ros::package::getPath("perception_pipeline") + "/" + save_path;
 
   // Transform listner
   tf2_ros::Buffer tfBuffer;
