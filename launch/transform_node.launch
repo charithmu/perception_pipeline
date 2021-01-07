@@ -22,8 +22,8 @@
             z_filter_min: -1
             z_filter_max: 1.3
             
-            save_pcd: false
-            save_interval: 2
+            save_pcd: true
+            save_interval: 5
             save_path: "output"
         </rosparam>
     </node>
