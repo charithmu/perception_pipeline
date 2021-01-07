@@ -59,6 +59,8 @@ int main(int argc, char **argv)
                                                                    sensor14_transformStamped};
   static_transform_broadcaster.sendTransform(alltransforms);
 
+  ROS_INFO_ONCE("Node: static_transforms:: Successfully published all static transforms.");
+
   ros::spin();
 
   return 0;
@@ -90,7 +92,7 @@ geometry_msgs::TransformStamped get_static_transform(std::string parent_frame, s
   stat_trans.transform.rotation.z = q.z();
   stat_trans.transform.rotation.w = q.w();
 
-  //ROS_INFO("Publishing transformation: %s to %s", child_frame.c_str(), parent_frame.c_str());
+  ROS_INFO_ONCE("Transformation calculated : %s to %s", child_frame.c_str(), parent_frame.c_str());
 
   return stat_trans;
 }
