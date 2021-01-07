@@ -46,7 +46,7 @@ Statistics stats;
 
 // Parameters used gloablly
 std::string world_frame;
-float voxel_leaf_size; // in mm
+float voxel_leaf_size;  // in mm
 float x_filter_min, x_filter_max, y_filter_min, y_filter_max, z_filter_min, z_filter_max;
 bool save_pcd;
 float save_interval;
@@ -86,8 +86,7 @@ geometry_msgs::TransformStamped identityTransform(std::string parent_frame, std:
   empty_transform.transform.rotation.z = q.z();
   empty_transform.transform.rotation.w = q.w();
 
-  std::cout << "rot: " << rot << std::endl
-            << q.x() << " " << q.y() << " " << q.z() << " " << std::endl;
+  std::cout << "rot: " << rot << std::endl << q.x() << " " << q.y() << " " << q.z() << " " << std::endl;
 
   ROS_INFO("transformation: %s to world", child_frame.c_str());
 
@@ -98,7 +97,7 @@ geometry_msgs::TransformStamped identityTransform(std::string parent_frame, std:
  * Synchronized message callback
  */
 void callback(const sensor_msgs::PointCloud2ConstPtr &raw_cloud1, const sensor_msgs::PointCloud2ConstPtr &raw_cloud2,
-              const sensor_msgs::PointCloud2ConstPtr &raw_cloud3)
+              const sensor_msgs::PointCloud2ConstPtr &raw_cloud3, const sensor_msgs::PointCloud2ConstPtr &raw_cloud4)
 {
   // start stat measurements
   stats.startCycle();
@@ -111,12 +110,12 @@ void callback(const sensor_msgs::PointCloud2ConstPtr &raw_cloud1, const sensor_m
   pcl_ros::transformPointCloud(world_frame, transformStamped1.transform, *raw_cloud1, ros_cloud1_transformed);
   pcl_ros::transformPointCloud(world_frame, transformStamped2.transform, *raw_cloud2, ros_cloud2_transformed);
   pcl_ros::transformPointCloud(world_frame, transformStamped3.transform, *raw_cloud3, ros_cloud3_transformed);
-  // pcl_ros::transformPointCloud(world_frame, transformStamped4.transform, *raw_cloud4, ros_cloud3_transformed);
+  pcl_ros::transformPointCloud(world_frame, transformStamped4.transform, *raw_cloud4, ros_cloud4_transformed);
 
   sensor1_pub.publish(ros_cloud1_transformed);
   sensor2_pub.publish(ros_cloud2_transformed);
   sensor3_pub.publish(ros_cloud3_transformed);
-  // sensor4_pub.publish(ros_cloud4_transformed);
+  sensor4_pub.publish(ros_cloud4_transformed);
 
   /*
    * CONVERT POINTCLOUDS ROS->PCL
@@ -126,12 +125,12 @@ void callback(const sensor_msgs::PointCloud2ConstPtr &raw_cloud1, const sensor_m
   pcl::fromROSMsg(ros_cloud1_transformed, pcl_cloud1);
   pcl::fromROSMsg(ros_cloud2_transformed, pcl_cloud2);
   pcl::fromROSMsg(ros_cloud3_transformed, pcl_cloud3);
-  // pcl::fromROSMsg(ros_cloud4_transformed, pcl_cloud4);
+  pcl::fromROSMsg(ros_cloud4_transformed, pcl_cloud4);
 
   /*
    * CONCATNATE POINTCLOUDS INTO SINGLE COMBINED POINTCLOUD
    */
-  pcl_cloud_full = pcl_cloud1 + pcl_cloud2 + pcl_cloud3; // + pcl_cloud4;
+  pcl_cloud_full = pcl_cloud1 + pcl_cloud2 + pcl_cloud3 + pcl_cloud4;
   // set timestamp of full pointcloud to current timestamp
   pcl_conversions::toPCL(ros::Time::now(), pcl_cloud_full.header.stamp);
 
@@ -234,6 +233,9 @@ void callback(const sensor_msgs::PointCloud2ConstPtr &raw_cloud1, const sensor_m
   }
 }
 
+/*
+ * Main function
+ */
 int main(int argc, char *argv[])
 {
   ros::init(argc, argv, "transformpipe_node");
@@ -291,7 +293,7 @@ int main(int argc, char *argv[])
     transformStamped1 = tfBuffer.lookupTransform(world_frame, sensor1_frame, ros::Time(0), ros::Duration(1));
     transformStamped2 = tfBuffer.lookupTransform(world_frame, sensor2_frame, ros::Time(0), ros::Duration(1));
     transformStamped3 = tfBuffer.lookupTransform(world_frame, sensor3_frame, ros::Time(0), ros::Duration(1));
-    // transformStamped3 = tfBuffer.lookupTransform(world_frame, sensor4_frame, ros::Time(0), ros::Duration(1));
+    transformStamped4 = tfBuffer.lookupTransform(world_frame, sensor4_frame, ros::Time(0), ros::Duration(1));
   }
   catch (tf2::TransformException &ex)
   {
@@ -308,18 +310,24 @@ int main(int argc, char *argv[])
   message_filters::Subscriber<ROSPointCloud> s1(nh, sensor1_topic_res, 100);
   message_filters::Subscriber<ROSPointCloud> s2(nh, sensor2_topic_res, 100);
   message_filters::Subscriber<ROSPointCloud> s3(nh, sensor3_topic_res, 100);
-  // message_filters::Subscriber<ROSPointCloud> s4(nh, sensor4_topic_res, 100);
+  message_filters::Subscriber<ROSPointCloud> s4(nh, sensor4_topic_res, 100);
 
   ROS_INFO("Node: transformpipe_node:: Messege filter subscribers created.");
 
-  typedef message_filters::sync_policies::ExactTime<ROSPointCloud, ROSPointCloud, ROSPointCloud> ExactTimePolicy;
-  typedef message_filters::sync_policies::ApproximateTime<ROSPointCloud, ROSPointCloud, ROSPointCloud> ApproxTimePolicy;
+  typedef message_filters::sync_policies::ExactTime<ROSPointCloud, ROSPointCloud, ROSPointCloud, ROSPointCloud>
+      ExactTimePolicy;
+  typedef message_filters::sync_policies::ApproximateTime<ROSPointCloud, ROSPointCloud, ROSPointCloud, ROSPointCloud>
+      ApproxTimePolicy;
 
-  message_filters::Synchronizer<ApproxTimePolicy> policysync(ApproxTimePolicy(100), s1, s2, s3);
-  policysync.registerCallback(boost::bind(&callback, _1, _2, _3));
+  message_filters::Synchronizer<ExactTimePolicy> exactTimeSync(ExactTimePolicy(100), s1, s2, s3, s4);
+  message_filters::Synchronizer<ApproxTimePolicy> approxTimeSync(ApproxTimePolicy(100), s1, s2, s3, s4);
 
-  message_filters::TimeSynchronizer<ROSPointCloud, ROSPointCloud, ROSPointCloud> timesync(s1, s2, s3, 100);
-  // timesync.registerCallback(boost::bind(&callback, _1, _2, _3));
+  message_filters::TimeSynchronizer<ROSPointCloud, ROSPointCloud, ROSPointCloud, ROSPointCloud> simpleTimeSync(
+      s1, s2, s3, s4, 100);
+
+  // simpleTimeSync.registerCallback(boost::bind(&callback, _1, _2, _3, _4));
+  // exactTimeSync.registerCallback(boost::bind(&callback, _1, _2, _3, _4));
+  approxTimeSync.registerCallback(boost::bind(&callback, _1, _2, _3, _4));
 
   ROS_INFO("Node: transformpipe_node:: Messege filter callback created and listning for sensor messeges.");
 
