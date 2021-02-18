@@ -353,10 +353,10 @@ int main(int argc, char *argv[])
   sensor3_topic_res = nh.resolveName(sensor3_topic);
   sensor4_topic_res = nh.resolveName(sensor4_topic);
 
-  message_filters::Subscriber<ROSPointCloud> s1(nh, sensor1_topic_res, 100);
-  message_filters::Subscriber<ROSPointCloud> s2(nh, sensor2_topic_res, 100);
-  message_filters::Subscriber<ROSPointCloud> s3(nh, sensor3_topic_res, 100);
-  message_filters::Subscriber<ROSPointCloud> s4(nh, sensor4_topic_res, 100);
+  message_filters::Subscriber<ROSPointCloud> s1(nh, sensor1_topic_res, 1);
+  message_filters::Subscriber<ROSPointCloud> s2(nh, sensor2_topic_res, 1);
+  message_filters::Subscriber<ROSPointCloud> s3(nh, sensor3_topic_res, 1);
+  message_filters::Subscriber<ROSPointCloud> s4(nh, sensor4_topic_res, 1);
 
   ROS_INFO("Node: transformpipe_node:: Messege filter subscribers created.");
 
@@ -365,11 +365,11 @@ int main(int argc, char *argv[])
   typedef message_filters::sync_policies::ApproximateTime<ROSPointCloud, ROSPointCloud, ROSPointCloud, ROSPointCloud>
       ApproxTimePolicy;
 
-  message_filters::Synchronizer<ExactTimePolicy> exactTimeSync(ExactTimePolicy(100), s1, s2, s3, s4);
-  message_filters::Synchronizer<ApproxTimePolicy> approxTimeSync(ApproxTimePolicy(100), s1, s2, s3, s4);
+  message_filters::Synchronizer<ExactTimePolicy> exactTimeSync(ExactTimePolicy(5), s1, s2, s3, s4);
+  message_filters::Synchronizer<ApproxTimePolicy> approxTimeSync(ApproxTimePolicy(5), s1, s2, s3, s4);
 
   message_filters::TimeSynchronizer<ROSPointCloud, ROSPointCloud, ROSPointCloud, ROSPointCloud> simpleTimeSync(
-      s1, s2, s3, s4, 100);
+      s1, s2, s3, s4, 5);
 
   // simpleTimeSync.registerCallback(boost::bind(&callback, _1, _2, _3, _4));
   // exactTimeSync.registerCallback(boost::bind(&callback, _1, _2, _3, _4));

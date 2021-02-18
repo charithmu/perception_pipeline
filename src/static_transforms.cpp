@@ -47,7 +47,7 @@ int main(int argc, char **argv)
   geometry_msgs::TransformStamped world_transformStamped, sensor12_transformStamped, sensor13_transformStamped, sensor14_transformStamped;
 
   // Get tf messages built for all the sensors
-  world_transformStamped = get_static_transform("world_frame", "sensor1_frame", transworld);
+  world_transformStamped = get_static_transform("sensor1_frame", "world_frame", transworld);
   sensor12_transformStamped = get_static_transform("sensor1_frame", "sensor2_frame", trans12);
   sensor13_transformStamped = get_static_transform("sensor1_frame", "sensor3_frame", trans13);
   sensor14_transformStamped = get_static_transform("sensor1_frame", "sensor4_frame", trans14);
