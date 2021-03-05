@@ -17,7 +17,7 @@
             downsample_filter: "none"
             voxel_leaf_size: 0.1
 
-            <!-- passthrough/node -->
+            <!-- passthrough/none -->
             resize_filter: "none"
             
             x_filter_min: -5
@@ -27,9 +27,9 @@
             z_filter_min: -5
             z_filter_max: 1.2
             
-            save_pcd: true
-            save_interval: 1
-            save_path: "output"
+            save_pcd: false
+            save_interval: 2
+            save_path: "output/1024"
         </rosparam>
     </node>
     <node name="static_transforms" pkg="perception_pipeline" type="static_transforms" output="screen">

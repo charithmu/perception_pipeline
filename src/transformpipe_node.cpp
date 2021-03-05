@@ -46,7 +46,7 @@ Statistics stats;
 
 // Parameters used gloablly
 std::string world_frame;
-float voxel_leaf_size;  // in mm
+float voxel_leaf_size; // in mm
 float x_filter_min, x_filter_max, y_filter_min, y_filter_max, z_filter_min, z_filter_max;
 bool save_pcd, enable_octreefilter, enable_voxelfilter, enable_passfilter;
 float save_interval;
@@ -86,7 +86,8 @@ geometry_msgs::TransformStamped identityTransform(std::string parent_frame, std:
   empty_transform.transform.rotation.z = q.z();
   empty_transform.transform.rotation.w = q.w();
 
-  std::cout << "rot: " << rot << std::endl << q.x() << " " << q.y() << " " << q.z() << " " << std::endl;
+  std::cout << "rot: " << rot << std::endl
+            << q.x() << " " << q.y() << " " << q.z() << " " << std::endl;
 
   ROS_INFO("transformation: %s to world", child_frame.c_str());
 
@@ -377,7 +378,14 @@ int main(int argc, char *argv[])
 
   ROS_INFO("Node: transformpipe_node:: Messege filter callback created and listning for sensor messeges.");
 
-  ros::spin();
+  //ros::spin();
+  ros::MultiThreadedSpinner spinner(16); // 2 threads
+  spinner.spin();
+
+  // ros::SubscribeOptions ops;
+  // ops.template init<std_msgs::String>("chatter", 1000, chatterCallback);
+  // ops.allow_concurrent_callbacks = true;
+  // ros::Subscriber sub = nh.subscribe(ops);
 
   return 0;
 }
