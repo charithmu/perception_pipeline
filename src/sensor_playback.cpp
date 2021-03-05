@@ -15,7 +15,7 @@ void sensor1callback(const sensor_msgs::PointCloud2::ConstPtr& msg)
   sensor_msgs::PointCloud2 newMsg;
   newMsg = *msg;
   newMsg.header.stamp.fromNSec(std::chrono::nanoseconds{ 0 }.count());
-
+  newMsg.header.frame_id = "sensor1_frame";
   // ROS_INFO("I heard from sensor 1: [%s]", msg->header.frame_id.c_str());
   sensor1_pub.publish(newMsg);
 }
@@ -25,7 +25,7 @@ void sensor2callback(const sensor_msgs::PointCloud2::ConstPtr& msg)
   sensor_msgs::PointCloud2 newMsg;
   newMsg = *msg;
   newMsg.header.stamp.fromNSec(std::chrono::nanoseconds{ 0 }.count());
-
+  newMsg.header.frame_id = "sensor2_frame";
   // ROS_INFO("I heard from sensor 2: [%s]", msg->header.frame_id.c_str());
   sensor2_pub.publish(newMsg);
 }
@@ -35,7 +35,7 @@ void sensor3callback(const sensor_msgs::PointCloud2::ConstPtr& msg)
   sensor_msgs::PointCloud2 newMsg;
   newMsg = *msg;
   newMsg.header.stamp.fromNSec(std::chrono::nanoseconds{ 0 }.count());
-
+  newMsg.header.frame_id = "sensor3_frame";
   // ROS_INFO("I heard from sensor 3: [%s]", msg->header.frame_id.c_str());
   sensor3_pub.publish(newMsg);
 }
@@ -45,7 +45,7 @@ void sensor4callback(const sensor_msgs::PointCloud2::ConstPtr& msg)
   sensor_msgs::PointCloud2 newMsg;
   newMsg = *msg;
   newMsg.header.stamp.fromNSec(std::chrono::nanoseconds{ 0 }.count());
-
+  newMsg.header.frame_id = "sensor4_frame";
   // ROS_INFO("I heard from sensor 3: [%s]", msg->header.frame_id.c_str());
   sensor4_pub.publish(newMsg);
 }
