@@ -2,7 +2,7 @@
 <package format="2">
   <name>perception_pipeline</name>
   <version>0.0.1</version>
-  <description>The lesson_perception package</description>
+  <description>A perception pipeline for multi-lidar capture system</description>
 
   <!-- One maintainer tag required, multiple allowed, one person per tag -->
   <!-- Example:  -->
@@ -51,6 +51,8 @@
   <depend>tf_conversions</depend>
   <depend>tf2_geometry_msgs</depend>
   <depend>rosbag</depend>
+  <build_depend>message_generation</build_depend>
+  <exec_depend>message_runtime</exec_depend>
 
   <!-- The export tag contains other, unspecified, tags -->
   <export>

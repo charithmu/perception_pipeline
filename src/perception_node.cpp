@@ -1,342 +1,323 @@
-#include <ros/ros.h>
-#include <ros/console.h>
-#include <sensor_msgs/PointCloud2.h>  //hydro
-#include <tf/transform_broadcaster.h>
-#include <tf/transform_datatypes.h>
-#include <tf/transform_listener.h>
-
-// PCL specific includes
-#include <pcl/filters/crop_box.h>
-#include <pcl/filters/extract_indices.h>
+// pcl
 #include <pcl/filters/passthrough.h>
-#include <pcl/filters/statistical_outlier_removal.h>
 #include <pcl/filters/voxel_grid.h>
-#include <pcl/sample_consensus/method_types.h>
-#include <pcl/sample_consensus/model_types.h>
-#include <pcl/segmentation/extract_clusters.h>
-#include <pcl/segmentation/extract_polygonal_prism_data.h>
-#include <pcl/segmentation/sac_segmentation.h>
-#include <pcl_conversions/pcl_conversions.h>  //hydro
+#include <pcl/io/pcd_io.h>
+#include <pcl/octree/octree_pointcloud_voxelcentroid.h>
+#include <pcl/point_types.h>
+#include <pcl_conversions/pcl_conversions.h>
+#include <pcl_ros/transforms.h>
+
+// tf
+#include <tf2_geometry_msgs/tf2_geometry_msgs.h>
+#include <tf2_ros/buffer.h>
+#include <tf2_ros/transform_listener.h>
 #include <tf_conversions/tf_eigen.h>
 
-#include "pcl_ros/transforms.h"
+// msgs
+#include <perception_pipeline/Quadcloud.h>
+#include <sensor_msgs/PointCloud2.h>
 
+// ros
+#include <ros/console.h>
+#include <ros/package.h>
+#include <ros/ros.h>
+// c++
+#include <statistics.h>
+
+#include <array>
+#include <iostream>
+
+typedef pcl::PointCloud<pcl::PointXYZI> PCLPointCloud;
+typedef pcl::PointCloud<pcl::PointXYZI>::Ptr PCLPointCloudPtr;
+typedef sensor_msgs::PointCloud2 ROSPointCloud;
+typedef sensor_msgs::PointCloud2::Ptr ROSPointCloudPtr;
+
+typedef perception_pipeline::Quadcloud QuadCloud;
+
+/*
+ * Global variables
+ */
+
+// Statistics
+Statistics stats;
+
+// Parameters used gloablly
+std::string world_frame;
+
+float voxel_leaf_size;  // in mm
+float x_filter_min, x_filter_max, y_filter_min, y_filter_max, z_filter_min, z_filter_max;
+
+bool save_pcd, enable_octreefilter, enable_voxelfilter, enable_passfilter;
+float save_interval;
+std::string save_path_full;
+
+// static transforms
+geometry_msgs::TransformStamped transformStamped1, transformStamped2, transformStamped3, transformStamped4;
+
+// Publishers
+ros::Publisher sensor1_pub, sensor2_pub, sensor3_pub, sensor4_pub, combined_pub;
+ros::Publisher octreefilter_pub, voxelfilter_pub, passfilter_pub;
+
+// last frame time
+ros::Time lastSavedTimeStamp;
+
+/*
+ * Synchronized clouds callback
+ */
+void quadCloudCallback(const QuadCloud::ConstPtr &quadcloud)
+{
+  // start stat measurements
+  stats.startCycle();
+
+  ROSPointCloud raw_cloud1, raw_cloud2, raw_cloud3, raw_cloud4;
+
+  raw_cloud1 = (*quadcloud).cloud1;
+  raw_cloud2 = (*quadcloud).cloud2;
+  raw_cloud3 = (*quadcloud).cloud3;
+  raw_cloud4 = (*quadcloud).cloud4;
+
+  /*
+   * TRANSFORM POINTCLOUDS AND PUBLISH SEPARATELY
+   */
+  ROSPointCloud ros_cloud1_transformed, ros_cloud2_transformed, ros_cloud3_transformed, ros_cloud4_transformed;
+
+  pcl_ros::transformPointCloud(world_frame, transformStamped1.transform, raw_cloud1, ros_cloud1_transformed);
+  pcl_ros::transformPointCloud(world_frame, transformStamped2.transform, raw_cloud2, ros_cloud2_transformed);
+  pcl_ros::transformPointCloud(world_frame, transformStamped3.transform, raw_cloud3, ros_cloud3_transformed);
+  pcl_ros::transformPointCloud(world_frame, transformStamped4.transform, raw_cloud4, ros_cloud4_transformed);
+
+  sensor1_pub.publish(ros_cloud1_transformed);
+  sensor2_pub.publish(ros_cloud2_transformed);
+  sensor3_pub.publish(ros_cloud3_transformed);
+  sensor4_pub.publish(ros_cloud4_transformed);
+
+  /*
+   * CONVERT POINTCLOUDS ROS->PCL
+   */
+  PCLPointCloud pcl_cloud1, pcl_cloud2, pcl_cloud3, pcl_cloud4, pcl_cloud_full;
+
+  pcl::fromROSMsg(ros_cloud1_transformed, pcl_cloud1);
+  pcl::fromROSMsg(ros_cloud2_transformed, pcl_cloud2);
+  pcl::fromROSMsg(ros_cloud3_transformed, pcl_cloud3);
+  pcl::fromROSMsg(ros_cloud4_transformed, pcl_cloud4);
+
+  /*
+   * CONCATNATE POINTCLOUDS INTO SINGLE COMBINED POINTCLOUD
+   */
+  pcl_cloud_full = pcl_cloud1 + pcl_cloud2 + pcl_cloud3 + pcl_cloud4;
+  // set timestamp of full pointcloud to current timestamp
+  pcl_conversions::toPCL(ros::Time::now(), pcl_cloud_full.header.stamp);
+
+  /*
+   * PUBLISH COMBINED POINTCLOUD
+   */
+  ROSPointCloudPtr ros_cloud_full_ptr(new ROSPointCloud);
+  PCLPointCloudPtr pcl_cloud_full_ptr(new PCLPointCloud(pcl_cloud_full));
+  pcl::toROSMsg(*pcl_cloud_full_ptr, *ros_cloud_full_ptr);
+  combined_pub.publish(ros_cloud_full_ptr);
+
+  PCLPointCloudPtr downsampleFilterOutput = pcl_cloud_full_ptr;
+
+  if (enable_octreefilter)
+  {
+    /*
+     * OCTREE VOXEL CENTROID FILTER AND PUBLISH
+     */
+    PCLPointCloudPtr pcl_cloud_octree_input = pcl_cloud_full_ptr;
+
+    pcl::octree::OctreePointCloudVoxelCentroid<pcl::PointXYZI> octree(voxel_leaf_size);
+    octree.setInputCloud(pcl_cloud_octree_input);
+    octree.defineBoundingBox();
+    octree.addPointsFromInputCloud();
+
+    pcl::PointCloud<pcl::PointXYZI>::VectorType voxelCentroids;
+    octree.getVoxelCentroids(voxelCentroids);
+
+    PCLPointCloud pcl_cloud_octree_filtered;
+    pcl_cloud_octree_filtered.width = voxelCentroids.size();
+    pcl_cloud_octree_filtered.height = 1;
+    pcl_cloud_octree_filtered.is_dense = true;
+    pcl_cloud_octree_filtered.points.resize(pcl_cloud_octree_filtered.width * pcl_cloud_octree_filtered.height);
+    pcl_cloud_octree_filtered.points = voxelCentroids;
+    pcl_cloud_octree_filtered.header = pcl_cloud_full.header;
+
+    ROSPointCloudPtr ros_cloud_octree_filtered(new ROSPointCloud);
+    pcl::toROSMsg(pcl_cloud_octree_filtered, *ros_cloud_octree_filtered);
+    octreefilter_pub.publish(ros_cloud_octree_filtered);
+
+    PCLPointCloudPtr ros_cloud_octree_filtered_ptr(new PCLPointCloud(pcl_cloud_octree_filtered));
+    downsampleFilterOutput = ros_cloud_octree_filtered_ptr;
+  }
+
+  if (enable_voxelfilter)
+  {
+    /*
+     * VOXEL GRID FILTER AND PUBLISH
+     */
+    PCLPointCloudPtr pcl_cloud_voxel_input = pcl_cloud_full_ptr;
+    PCLPointCloudPtr pcl_cloud_voxel_filtered(new PCLPointCloud());
+
+    pcl::VoxelGrid<pcl::PointXYZI> voxel_filter;
+
+    voxel_filter.setInputCloud(pcl_cloud_voxel_input);
+    voxel_filter.setLeafSize(voxel_leaf_size, voxel_leaf_size, voxel_leaf_size);
+    voxel_filter.filter(*pcl_cloud_voxel_filtered);
+
+    ROSPointCloudPtr ros_cloud_voxel_filtered(new ROSPointCloud);
+    pcl::toROSMsg(*pcl_cloud_voxel_filtered, *ros_cloud_voxel_filtered);
+    voxelfilter_pub.publish(ros_cloud_voxel_filtered);
+
+    downsampleFilterOutput = pcl_cloud_voxel_filtered;
+  }
+
+  PCLPointCloudPtr passFilterOutput = downsampleFilterOutput;
+
+  if (enable_passfilter)
+  {
+    /*
+     * PASS THROUGH FILTERS FOR X,Y,Z CROP AND PUBLISH
+     */
+    PCLPointCloud pcl_cloud_xf_out, pcl_cloud_yf_out, pcl_cloud_zf_out;
+    pcl::PassThrough<pcl::PointXYZI> pass_x, pass_y, pass_z;
+    // x
+    PCLPointCloudPtr pcl_cloud_xf_in = downsampleFilterOutput;
+    pass_x.setInputCloud(pcl_cloud_xf_in);
+    pass_x.setFilterFieldName("x");
+    pass_x.setFilterLimits(x_filter_min, x_filter_max);
+    pass_x.filter(pcl_cloud_xf_out);
+    // y
+    PCLPointCloudPtr pcl_cloud_yf_in(new PCLPointCloud(pcl_cloud_xf_out));
+    pass_y.setInputCloud(pcl_cloud_yf_in);
+    pass_y.setFilterFieldName("y");
+    pass_y.setFilterLimits(y_filter_min, y_filter_max);
+    pass_y.filter(pcl_cloud_yf_out);
+    // z
+    PCLPointCloudPtr pcl_cloud_zf_in(new PCLPointCloud(pcl_cloud_yf_out));
+    pass_z.setInputCloud(pcl_cloud_zf_in);
+    pass_z.setFilterFieldName("z");
+    pass_z.setFilterLimits(z_filter_min, z_filter_max);
+    pass_z.filter(pcl_cloud_zf_out);
+
+    PCLPointCloudPtr pcl_cloud_passthorugh_ptr(new PCLPointCloud(pcl_cloud_zf_out));
+    ROSPointCloudPtr ros_cloud_passthrough(new ROSPointCloud);
+
+    pcl::toROSMsg(*pcl_cloud_passthorugh_ptr, *ros_cloud_passthrough);
+    passfilter_pub.publish(ros_cloud_passthrough);
+
+    passFilterOutput = pcl_cloud_passthorugh_ptr;
+  }
+
+  // end stat measurements
+  stats.finishCycle();
+
+  /*
+   * SAVE TO *.PCD FILE ACCORDING TO GIVEN INTERVAL
+   */
+
+  // get the timestamp of the frame processed in this cycle
+  ros::Time currentTimeStamp = ros_cloud_full_ptr->header.stamp;
+  ros::Duration timeSinceLast = currentTimeStamp - lastSavedTimeStamp;
+
+  if (save_pcd == true && timeSinceLast >= ros::Duration(save_interval))
+  {
+    // save to PCD && reset lastTimeStamp
+    lastSavedTimeStamp = currentTimeStamp;
+    std::string file_name = save_path_full + "/" + "pcd-" + std::to_string(currentTimeStamp.toNSec()) + ".pcd";
+    pcl::io::savePCDFileASCII(file_name, *passFilterOutput);
+    ROS_INFO("Saved pointcloud with %lu points to %s", (*passFilterOutput).size(), file_name.c_str());
+  }
+}
+
+/*
+ * Main function
+ */
 int main(int argc, char *argv[])
 {
-  /*
-   * INITIALIZE ROS NODE
-   */
   ros::init(argc, argv, "perception_node");
+
   ros::NodeHandle nh;
   ros::NodeHandle priv_nh_("~");
 
-  /*
-   * SET UP PARAMETERS (COULD BE INPUT FROM LAUNCH FILE/TERMINAL)
-   */
-  std::string cloud_topic, world_frame, camera_frame;
+  auto world_frame = nh.param<std::string>("world_frame", "world_frame");
+  auto sensor1_frame = nh.param<std::string>("sensor1_frame", "sensor1_frame");
+  auto sensor2_frame = nh.param<std::string>("sensor2_frame", "sensor2_frame");
+  auto sensor3_frame = nh.param<std::string>("sensor3_frame", "sensor3_frame");
+  auto sensor4_frame = nh.param<std::string>("sensor4_frame", "sensor4_frame");
 
-  float voxel_leaf_size;
-  float x_filter_min, x_filter_max, y_filter_min, y_filter_max, z_filter_min, z_filter_max;
+  sensor1_pub = nh.advertise<ROSPointCloud>("env/sensor1/points/aligned", 1);
+  sensor2_pub = nh.advertise<ROSPointCloud>("env/sensor2/points/aligned", 1);
+  sensor3_pub = nh.advertise<ROSPointCloud>("env/sensor3/points/aligned", 1);
+  sensor4_pub = nh.advertise<ROSPointCloud>("env/sensor4/points/aligned", 1);
 
-  int plane_max_iter;
-  float plane_dist_thresh;
+  combined_pub = nh.advertise<ROSPointCloud>("env/combined/points", 1);
 
-  float cluster_tol;
-  int cluster_min_size;
-  int cluster_max_size;
+  auto downsample_filter = priv_nh_.param<std::string>("downsample_filter", "none");
+  auto resize_filter = priv_nh_.param<std::string>("resize_filter", "none");
 
-  cloud_topic = priv_nh_.param<std::string>("cloud_topic", "sensor/points");
-  world_frame = priv_nh_.param<std::string>("world_frame", "world_frame");
-  camera_frame = priv_nh_.param<std::string>("camera_frame", "sensor_frame");
-
-  voxel_leaf_size = priv_nh_.param<float>("voxel_leaf_size", 0.1);
-  x_filter_min = priv_nh_.param<float>("x_filter_min", -2.5);
-  x_filter_max = priv_nh_.param<float>("x_filter_max", 2.5);
-  y_filter_min = priv_nh_.param<float>("y_filter_min", -2.5);
-  y_filter_max = priv_nh_.param<float>("y_filter_max", 2.5);
-  z_filter_min = priv_nh_.param<float>("z_filter_min", -2.5);
-  z_filter_max = priv_nh_.param<float>("z_filter_max", 2.5);
-
-  plane_max_iter = priv_nh_.param<int>("plane_max_iterations", 50);
-  plane_dist_thresh = priv_nh_.param<float>("plane_distance_threshold", 0.05);
-
-  cluster_tol = priv_nh_.param<float>("cluster_tolerance", 0.01);
-  cluster_min_size = priv_nh_.param<int>("cluster_min_size", 100);
-  cluster_max_size = priv_nh_.param<int>("cluster_max_size", 50000);
-
-  /*
-   * SETUP PUBLISHERS
-   */
-  ros::Publisher object_pub, cluster_pub, pose_pub;
-  object_pub = nh.advertise<sensor_msgs::PointCloud2>("object_cluster", 1);
-  cluster_pub = nh.advertise<sensor_msgs::PointCloud2>("primary_cluster", 1);
-
-  while (ros::ok())
+  if (downsample_filter == "octree")
   {
-    /*
-     * LISTEN FOR POINTCLOUD
-     */
-    std::string topic = nh.resolveName(cloud_topic);
-    ROS_INFO_STREAM("Cloud service called; waiting for a PointCloud2 on topic " << topic);
+    enable_octreefilter = true;
+    octreefilter_pub = nh.advertise<ROSPointCloud>("env/combined/octreefilter", 1);
+    voxel_leaf_size = priv_nh_.param<float>("voxel_leaf_size", 0.1);
+  }
+  else if (downsample_filter == "voxelgrid")
+  {
+    enable_voxelfilter = true;
+    voxelfilter_pub = nh.advertise<ROSPointCloud>("env/combined/voxelfilter", 1);
+    voxel_leaf_size = priv_nh_.param<float>("voxel_leaf_size", 0.1);
+  }
+  else
+  {
+    enable_octreefilter = false;
+    enable_voxelfilter = false;
+  }
 
-    sensor_msgs::PointCloud2::ConstPtr recent_cloud = ros::topic::waitForMessage<sensor_msgs::PointCloud2>(topic, nh);
+  if (resize_filter == "passthrough")
+  {
+    enable_passfilter = true;
+    passfilter_pub = nh.advertise<ROSPointCloud>("env/combined/passfilter", 1);
 
-    /*
-     * TRANSFORM POINTCLOUD FROM CAMERA FRAME TO WORLD FRAME
-     */
-    tf::TransformListener listener;
-    tf::StampedTransform stransform;
-    try
-    {
-      listener.waitForTransform(world_frame, recent_cloud->header.frame_id, ros::Time::now(), ros::Duration(6.0));
-      listener.lookupTransform(world_frame, recent_cloud->header.frame_id, ros::Time(0), stransform);
-    }
-    catch (tf::TransformException ex)
-    {
-      ROS_ERROR("%s", ex.what());
-    }
+    x_filter_min = priv_nh_.param<float>("x_filter_min", -2.5);
+    x_filter_max = priv_nh_.param<float>("x_filter_max", 2.5);
+    y_filter_min = priv_nh_.param<float>("y_filter_min", -2.5);
+    y_filter_max = priv_nh_.param<float>("y_filter_max", 2.5);
+    z_filter_min = priv_nh_.param<float>("z_filter_min", -2.5);
+    z_filter_max = priv_nh_.param<float>("z_filter_max", 2.5);
+  }
+  else
+  {
+    enable_passfilter = false;
+  }
 
-    sensor_msgs::PointCloud2 transformed_cloud;
-    //  sensor_msgs::PointCloud2::ConstPtr recent_cloud =
-    //               ros::topic::waitForMessage<sensor_msgs::PointCloud2>(topic, nh);
-    pcl_ros::transformPointCloud(world_frame, stransform, *recent_cloud, transformed_cloud);
+  save_pcd = priv_nh_.param<bool>("save_pcd", false);
+  save_interval = priv_nh_.param<float>("save_interval", 2.0);
+  auto save_path = priv_nh_.param<std::string>("save_path", "output");
 
-    /*
-     * CONVERT POINTCLOUD ROS->PCL
-     */
-    pcl::PointCloud<pcl::PointXYZ> cloud;
-    pcl::fromROSMsg(transformed_cloud, cloud);
+  save_path_full = ros::package::getPath("perception_pipeline") + "/" + save_path;
 
-    /* ========================================
-     * Fill Code: VOXEL GRID
-     * ========================================*/
-    pcl::PointCloud<pcl::PointXYZ>::Ptr cloud_ptr(new pcl::PointCloud<pcl::PointXYZ>(cloud));
-    pcl::PointCloud<pcl::PointXYZ>::Ptr cloud_voxel_filtered(new pcl::PointCloud<pcl::PointXYZ>());
+  // Transform listner
+  tf2_ros::Buffer tfBuffer;
+  tf2_ros::TransformListener tfListener(tfBuffer);
 
-    pcl::VoxelGrid<pcl::PointXYZ> voxel_filter;
+  // Get the transformation for each pointcloud
+  try
+  {
+    transformStamped1 = tfBuffer.lookupTransform(world_frame, sensor1_frame, ros::Time(0), ros::Duration(1));
+    transformStamped2 = tfBuffer.lookupTransform(world_frame, sensor2_frame, ros::Time(0), ros::Duration(1));
+    transformStamped3 = tfBuffer.lookupTransform(world_frame, sensor3_frame, ros::Time(0), ros::Duration(1));
+    transformStamped4 = tfBuffer.lookupTransform(world_frame, sensor4_frame, ros::Time(0), ros::Duration(1));
+  }
+  catch (tf2::TransformException &ex)
+  {
+    ROS_ERROR("Node: perception_node:: Trasnformations lookup failed.");
+    ROS_WARN("%s", ex.what());
+    ros::Duration(1.0).sleep();
+  }
+  ROS_INFO("Node: perception_node:: Trasnformations lookup was successful.");
 
-    voxel_filter.setInputCloud(cloud_ptr);
-    voxel_filter.setLeafSize(voxel_leaf_size, voxel_leaf_size, voxel_leaf_size);
-    voxel_filter.filter(*cloud_voxel_filtered);
+  ros::Subscriber quadcloud_sub = nh.subscribe("env/syncedClouds", 1, quadCloudCallback);
 
-    ROS_INFO_STREAM("Original cloud  had " << cloud_ptr->size() << " points");
-    ROS_INFO_STREAM("Downsampled cloud  with " << cloud_voxel_filtered->size() << " points");
+  ros::spin();
 
-    /* ========================================
-     * Fill Code: PASSTHROUGH FILTER(S)
-     * ========================================*/
-    pcl::PointCloud<pcl::PointXYZ> xf_cloud, yf_cloud, zf_cloud;
-
-    pcl::PassThrough<pcl::PointXYZ> pass_x;
-    pass_x.setInputCloud(cloud_voxel_filtered);
-    pass_x.setFilterFieldName("x");
-    pass_x.setFilterLimits(x_filter_min, x_filter_max);
-    pass_x.filter(xf_cloud);
-
-    pcl::PointCloud<pcl::PointXYZ>::Ptr xf_cloud_ptr(new pcl::PointCloud<pcl::PointXYZ>(xf_cloud));
-
-    pcl::PassThrough<pcl::PointXYZ> pass_y;
-    pass_y.setInputCloud(xf_cloud_ptr);
-    pass_y.setFilterFieldName("y");
-    pass_y.setFilterLimits(y_filter_min, y_filter_max);
-    pass_y.filter(yf_cloud);
-
-    pcl::PointCloud<pcl::PointXYZ>::Ptr yf_cloud_ptr(new pcl::PointCloud<pcl::PointXYZ>(yf_cloud));
-
-    pcl::PassThrough<pcl::PointXYZ> pass_z;
-    pass_z.setInputCloud(yf_cloud_ptr);
-    pass_z.setFilterFieldName("z");
-    pass_z.setFilterLimits(z_filter_min, z_filter_max);
-    pass_z.filter(zf_cloud);
-
-    /* ========================================
-     * Fill Code: CROPBOX (OPTIONAL)
-     * ========================================*/
-    pcl::PointCloud<pcl::PointXYZ> xyz_filtered_cloud;
-    pcl::CropBox<pcl::PointXYZ> crop;
-    crop.setInputCloud(cloud_voxel_filtered);
-    Eigen::Vector4f min_point = Eigen::Vector4f(x_filter_min, y_filter_min, z_filter_min, 0);
-    Eigen::Vector4f max_point = Eigen::Vector4f(x_filter_max, y_filter_max, z_filter_max, 0);
-    crop.setMin(min_point);
-    crop.setMax(max_point);
-    crop.filter(xyz_filtered_cloud);
-
-    /* ========================================
-     * Fill Code: PLANE SEGEMENTATION
-     * ========================================*/
-    pcl::PointCloud<pcl::PointXYZ>::Ptr cropped_cloud(new pcl::PointCloud<pcl::PointXYZ>(xyz_filtered_cloud));
-    pcl::PointCloud<pcl::PointXYZ>::Ptr cloud_f(new pcl::PointCloud<pcl::PointXYZ>);
-    pcl::PointCloud<pcl::PointXYZ>::Ptr cloud_filtered(new pcl::PointCloud<pcl::PointXYZ>);
-    pcl::PointCloud<pcl::PointXYZ>::Ptr cloud_plane(new pcl::PointCloud<pcl::PointXYZ>());
-
-    // Create the segmentation object for the planar model and set all the parameters
-    pcl::SACSegmentation<pcl::PointXYZ> seg;
-    pcl::PointIndices::Ptr inliers(new pcl::PointIndices);
-    pcl::ModelCoefficients::Ptr coefficients(new pcl::ModelCoefficients);
-
-    seg.setOptimizeCoefficients(true);
-    seg.setModelType(pcl::SACMODEL_PLANE);
-    seg.setMethodType(pcl::SAC_RANSAC);
-    seg.setMaxIterations(plane_max_iter);
-    seg.setDistanceThreshold(plane_dist_thresh);
-    // Segment the largest planar component from the cropped cloud
-    seg.setInputCloud(cropped_cloud);
-    seg.segment(*inliers, *coefficients);
-
-    if (inliers->indices.size() == 0)
-    {
-      ROS_WARN_STREAM("Could not estimate a planar model for the given dataset.");
-      // break;
-    }
-
-    // Extract the planar inliers from the input cloud
-    pcl::ExtractIndices<pcl::PointXYZ> extract;
-    extract.setInputCloud(cropped_cloud);
-    extract.setIndices(inliers);
-    extract.setNegative(false);
-
-    // Get the points associated with the planar surface
-    extract.filter(*cloud_plane);
-    ROS_INFO_STREAM("PointCloud representing the planar component: " << cloud_plane->points.size() << " data points.");
-
-    // Remove the planar inliers, extract the rest
-    extract.setNegative(true);
-    extract.filter(*cloud_f);
-
-    /* ========================================
-     * Fill Code: PUBLISH PLANE MARKER (OPTIONAL)
-     * ========================================*/
-
-    /* ========================================
-     * Fill Code: EUCLIDEAN CLUSTER EXTRACTION (OPTIONAL/RECOMMENDED)
-     * ========================================*/
-    // Creating the KdTree object for the search method of the extraction
-    pcl::search::KdTree<pcl::PointXYZ>::Ptr tree(new pcl::search::KdTree<pcl::PointXYZ>);
-    *cloud_filtered = *cloud_f;
-    tree->setInputCloud(cloud_filtered);
-
-    std::vector<pcl::PointIndices> cluster_indices;
-    pcl::EuclideanClusterExtraction<pcl::PointXYZ> ec;
-    ec.setClusterTolerance(cluster_tol);
-    ec.setMinClusterSize(cluster_min_size);
-    ec.setMaxClusterSize(cluster_max_size);
-    ec.setSearchMethod(tree);
-    ec.setInputCloud(cloud_filtered);
-    ec.extract(cluster_indices);
-
-    std::vector<sensor_msgs::PointCloud2::Ptr> pc2_clusters;
-    std::vector<pcl::PointCloud<pcl::PointXYZ>::Ptr> clusters;
-    for (std::vector<pcl::PointIndices>::const_iterator it = cluster_indices.begin(); it != cluster_indices.end(); ++it)
-    {
-      pcl::PointCloud<pcl::PointXYZ>::Ptr cloud_cluster(new pcl::PointCloud<pcl::PointXYZ>);
-      for (std::vector<int>::const_iterator pit = it->indices.begin(); pit != it->indices.end(); pit++)
-        cloud_cluster->points.push_back(cloud_filtered->points[*pit]);
-      cloud_cluster->width = cloud_cluster->points.size();
-      cloud_cluster->height = 1;
-      cloud_cluster->is_dense = true;
-      std::cout << "Cluster has " << cloud_cluster->points.size() << " points.\n";
-      clusters.push_back(cloud_cluster);
-      sensor_msgs::PointCloud2::Ptr tempROSMsg(new sensor_msgs::PointCloud2);
-      pcl::toROSMsg(*cloud_cluster, *tempROSMsg);
-      pc2_clusters.push_back(tempROSMsg);
-    }
-
-    /* ========================================
-     * Fill Code: STATISTICAL OUTLIER REMOVAL (OPTIONAL)
-     * ========================================*/
-    pcl::PointCloud<pcl::PointXYZ>::Ptr cluster_cloud_ptr = clusters.at(0);
-    pcl::PointCloud<pcl::PointXYZ>::Ptr sor_cloud_filtered(new pcl::PointCloud<pcl::PointXYZ>);
-    pcl::StatisticalOutlierRemoval<pcl::PointXYZ> sor;
-    sor.setInputCloud(cluster_cloud_ptr);
-    sor.setMeanK(50);
-    sor.setStddevMulThresh(1.0);
-    sor.filter(*sor_cloud_filtered);
-
-    /* ========================================
-     * Fill Code: PUBLISH OTHER MARKERS (OPTIONAL)
-     * ========================================*/
-
-    /* ========================================
-     * BROADCAST TRANSFORM (OPTIONAL)
-     * ========================================*/
-    static tf::TransformBroadcaster br;
-    tf::Transform part_transform;
-
-    // Here in the tf::Vector3(x,y,z) x,y, and z should be calculated based on the pointcloud filtering results
-    part_transform.setOrigin(
-        tf::Vector3(sor_cloud_filtered->at(1).x, sor_cloud_filtered->at(1).y, sor_cloud_filtered->at(1).z));
-    tf::Quaternion q;
-    q.setRPY(0, 0, 0);
-    part_transform.setRotation(q);
-    br.sendTransform(tf::StampedTransform(part_transform, ros::Time::now(), world_frame, "part"));
-
-    /* ========================================
-     * Fill Code: POLYGONAL SEGMENTATION (OPTIONAL)
-     * ========================================*/
-    pcl::PointCloud<pcl::PointXYZ>::Ptr sensor_cloud_ptr(new pcl::PointCloud<pcl::PointXYZ>(cloud));
-    pcl::PointCloud<pcl::PointXYZ>::Ptr prism_filtered_cloud(new pcl::PointCloud<pcl::PointXYZ>);
-    pcl::PointCloud<pcl::PointXYZ>::Ptr pick_surface_cloud_ptr(new pcl::PointCloud<pcl::PointXYZ>);
-    pcl::ExtractPolygonalPrismData<pcl::PointXYZ> prism;
-    pcl::ExtractIndices<pcl::PointXYZ> extract_ind;
-    prism.setInputCloud(sensor_cloud_ptr);
-    pcl::PointIndices::Ptr pt_inliers(new pcl::PointIndices());
-    // create prism surface
-    double box_length = 0.25;
-    double box_width = 0.25;
-    pick_surface_cloud_ptr->width = 5;
-    pick_surface_cloud_ptr->height = 1;
-    pick_surface_cloud_ptr->points.resize(5);
-
-    pick_surface_cloud_ptr->points[0].x = 0.5f * box_length;
-    pick_surface_cloud_ptr->points[0].y = 0.5f * box_width;
-    pick_surface_cloud_ptr->points[0].z = 0;
-
-    pick_surface_cloud_ptr->points[1].x = -0.5f * box_length;
-    pick_surface_cloud_ptr->points[1].y = 0.5f * box_width;
-    pick_surface_cloud_ptr->points[1].z = 0;
-
-    pick_surface_cloud_ptr->points[2].x = -0.5f * box_length;
-    pick_surface_cloud_ptr->points[2].y = -0.5f * box_width;
-    pick_surface_cloud_ptr->points[2].z = 0;
-
-    pick_surface_cloud_ptr->points[3].x = 0.5f * box_length;
-    pick_surface_cloud_ptr->points[3].y = -0.5f * box_width;
-    pick_surface_cloud_ptr->points[3].z = 0;
-
-    pick_surface_cloud_ptr->points[4].x = 0.5f * box_length;
-    pick_surface_cloud_ptr->points[4].y = 0.5f * box_width;
-    pick_surface_cloud_ptr->points[4].z = 0;
-
-    Eigen::Affine3d eigen3d;
-    tf::transformTFToEigen(part_transform, eigen3d);
-    pcl::transformPointCloud(*pick_surface_cloud_ptr, *pick_surface_cloud_ptr, Eigen::Affine3f(eigen3d));
-
-    prism.setInputPlanarHull(pick_surface_cloud_ptr);
-    prism.setHeightLimits(-10, 10);
-
-    prism.segment(*pt_inliers);
-
-    extract_ind.setInputCloud(sensor_cloud_ptr);
-    extract_ind.setIndices(pt_inliers);
-
-    extract_ind.setNegative(true);
-    extract_ind.filter(*prism_filtered_cloud);
-
-    /* ========================================
-     * CONVERT POINTCLOUD PCL->ROS
-     * PUBLISH CLOUD
-     * Fill Code: UPDATE AS NECESSARY
-     * ========================================*/
-    sensor_msgs::PointCloud2::Ptr pc2_cloud(new sensor_msgs::PointCloud2);
-
-    pcl::toROSMsg(*prism_filtered_cloud, *pc2_cloud);
-
-    pc2_cloud->header.frame_id = world_frame;
-    pc2_cloud->header.stamp = ros::Time::now();
-    object_pub.publish(pc2_cloud);
-
-  }  // end loop
-
-  // return main
   return 0;
 }
