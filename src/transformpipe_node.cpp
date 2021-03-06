@@ -106,6 +106,12 @@ void callback(const sensor_msgs::PointCloud2ConstPtr &raw_cloud1, const sensor_m
   /*
    * TRANSFORM POINTCLOUDS AND PUBLISH SEPARATELY
    */
+  ROSPointCloud cloud1, cloud2, cloud3, cloud4;
+  cloud1 = *raw_cloud1;
+  cloud2 = *raw_cloud2;
+  cloud3 = *raw_cloud3;
+  cloud4 = *raw_cloud4;
+
   ROSPointCloud ros_cloud1_transformed, ros_cloud2_transformed, ros_cloud3_transformed, ros_cloud4_transformed;
 
   pcl_ros::transformPointCloud(world_frame, transformStamped1.transform, *raw_cloud1, ros_cloud1_transformed);
