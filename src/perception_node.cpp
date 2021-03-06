@@ -29,10 +29,11 @@
 
 typedef pcl::PointCloud<pcl::PointXYZI> PCLPointCloud;
 typedef pcl::PointCloud<pcl::PointXYZI>::Ptr PCLPointCloudPtr;
+
 typedef sensor_msgs::PointCloud2 ROSPointCloud;
 typedef sensor_msgs::PointCloud2::Ptr ROSPointCloudPtr;
 
-typedef perception_pipeline::Quadcloud QuadCloud;
+typedef perception_pipeline::Quadcloud PPQuadCloud;
 
 /*
  * Global variables
@@ -64,27 +65,27 @@ ros::Time lastSavedTimeStamp;
 /*
  * Synchronized clouds callback
  */
-void quadCloudCallback(const QuadCloud::ConstPtr &quadcloud)
+void quadCloudCallback(const perception_pipeline::QuadcloudConstPtr &quadcloud)
 {
   // start stat measurements
   stats.startCycle();
 
-  ROSPointCloud raw_cloud1, raw_cloud2, raw_cloud3, raw_cloud4;
+  ROSPointCloud cloud1, cloud2, cloud3, cloud4;
 
-  raw_cloud1 = (*quadcloud).cloud1;
-  raw_cloud2 = (*quadcloud).cloud2;
-  raw_cloud3 = (*quadcloud).cloud3;
-  raw_cloud4 = (*quadcloud).cloud4;
+  cloud1 = (*quadcloud).cloud1;
+  cloud2 = (*quadcloud).cloud2;
+  cloud3 = (*quadcloud).cloud3;
+  cloud4 = (*quadcloud).cloud4;
 
   /*
    * TRANSFORM POINTCLOUDS AND PUBLISH SEPARATELY
    */
   ROSPointCloud ros_cloud1_transformed, ros_cloud2_transformed, ros_cloud3_transformed, ros_cloud4_transformed;
 
-  pcl_ros::transformPointCloud(world_frame, transformStamped1.transform, raw_cloud1, ros_cloud1_transformed);
-  pcl_ros::transformPointCloud(world_frame, transformStamped2.transform, raw_cloud2, ros_cloud2_transformed);
-  pcl_ros::transformPointCloud(world_frame, transformStamped3.transform, raw_cloud3, ros_cloud3_transformed);
-  pcl_ros::transformPointCloud(world_frame, transformStamped4.transform, raw_cloud4, ros_cloud4_transformed);
+  pcl_ros::transformPointCloud(world_frame, transformStamped1.transform, cloud1, ros_cloud1_transformed);
+  pcl_ros::transformPointCloud(world_frame, transformStamped2.transform, cloud2, ros_cloud2_transformed);
+  pcl_ros::transformPointCloud(world_frame, transformStamped3.transform, cloud3, ros_cloud3_transformed);
+  pcl_ros::transformPointCloud(world_frame, transformStamped4.transform, cloud4, ros_cloud4_transformed);
 
   sensor1_pub.publish(ros_cloud1_transformed);
   sensor2_pub.publish(ros_cloud2_transformed);

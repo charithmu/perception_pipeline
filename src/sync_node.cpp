@@ -20,7 +20,7 @@
 typedef sensor_msgs::PointCloud2 ROSPointCloud;
 typedef sensor_msgs::PointCloud2::Ptr ROSPointCloudPtr;
 
-typedef perception_pipeline::Quadcloud QuadCloud;
+typedef perception_pipeline::Quadcloud PPQuadCloud;
 
 /*
  * Global variables
@@ -41,7 +41,7 @@ void callback(const sensor_msgs::PointCloud2ConstPtr &raw_cloud1, const sensor_m
   cloud3 = *raw_cloud3;
   cloud4 = *raw_cloud4;
 
-  QuadCloud quad;
+  PPQuadCloud quad;
   quad.cloud1 = *raw_cloud1;
   quad.cloud2 = *raw_cloud2;
   quad.cloud3 = *raw_cloud3;
@@ -73,7 +73,7 @@ int main(int argc, char *argv[])
 
   auto sync_policy = nh.param<std::string>("sync_policy", "approx");
 
-  quadcloud_pub = nh.advertise<QuadCloud>("env/syncedClouds", 1);
+  quadcloud_pub = nh.advertise<PPQuadCloud>("env/syncedClouds", 1);
 
   message_filters::Subscriber<ROSPointCloud> s1(nh, sensor1_topic, 1);
   message_filters::Subscriber<ROSPointCloud> s2(nh, sensor2_topic, 1);
