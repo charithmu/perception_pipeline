@@ -15,11 +15,11 @@
         sync_policy: "approx"
         
             <!-- octree/voxelgrid/none -->
-        downsample_filter: "none"
+        downsample_filter: "octree"
         voxel_leaf_size: 0.1
 
             <!-- passthrough/node -->
-        resize_filter: "none"
+        resize_filter: "passthrough"
         
         x_filter_min: -5
         x_filter_max: 5
