@@ -45,7 +45,7 @@ Statistics stats;
 // Parameters used gloablly
 std::string world_frame;
 
-float voxel_leaf_size;  // in mm
+float voxel_leaf_size; // in mm
 float x_filter_min, x_filter_max, y_filter_min, y_filter_max, z_filter_min, z_filter_max;
 
 bool save_pcd, enable_octreefilter, enable_voxelfilter, enable_passfilter;
@@ -70,22 +70,25 @@ void quadCloudCallback(const perception_pipeline::QuadcloudConstPtr &quadcloud)
   // start stat measurements
   stats.startCycle();
 
-  ROSPointCloud cloud1, cloud2, cloud3, cloud4;
-
-  cloud1 = (*quadcloud).cloud1;
-  cloud2 = (*quadcloud).cloud2;
-  cloud3 = (*quadcloud).cloud3;
-  cloud4 = (*quadcloud).cloud4;
+  const ROSPointCloud rcloud1 = quadcloud->cloud1;
+  const ROSPointCloud rcloud2 = quadcloud->cloud2;
+  const ROSPointCloud rcloud3 = quadcloud->cloud3;
+  const ROSPointCloud rcloud4 = quadcloud->cloud4;
 
   /*
    * TRANSFORM POINTCLOUDS AND PUBLISH SEPARATELY
    */
   ROSPointCloud ros_cloud1_transformed, ros_cloud2_transformed, ros_cloud3_transformed, ros_cloud4_transformed;
 
-  pcl_ros::transformPointCloud(world_frame, transformStamped1.transform, cloud1, ros_cloud1_transformed);
-  pcl_ros::transformPointCloud(world_frame, transformStamped2.transform, cloud2, ros_cloud2_transformed);
-  pcl_ros::transformPointCloud(world_frame, transformStamped3.transform, cloud3, ros_cloud3_transformed);
-  pcl_ros::transformPointCloud(world_frame, transformStamped4.transform, cloud4, ros_cloud4_transformed);
+  pcl_ros::transformPointCloud(world_frame, transformStamped1.transform, rcloud1, ros_cloud1_transformed);
+  pcl_ros::transformPointCloud(world_frame, transformStamped2.transform, rcloud2, ros_cloud2_transformed);
+  pcl_ros::transformPointCloud(world_frame, transformStamped3.transform, rcloud3, ros_cloud3_transformed);
+  pcl_ros::transformPointCloud(world_frame, transformStamped4.transform, rcloud4, ros_cloud4_transformed);
+
+  ros_cloud1_transformed.header.frame_id = "world_frame";
+  ros_cloud2_transformed.header.frame_id = "world_frame";
+  ros_cloud3_transformed.header.frame_id = "world_frame";
+  ros_cloud4_transformed.header.frame_id = "world_frame";
 
   sensor1_pub.publish(ros_cloud1_transformed);
   sensor2_pub.publish(ros_cloud2_transformed);
@@ -316,9 +319,16 @@ int main(int argc, char *argv[])
   }
   ROS_INFO("Node: perception_node:: Trasnformations lookup was successful.");
 
-  ros::Subscriber quadcloud_sub = nh.subscribe("env/syncedClouds", 1, quadCloudCallback);
+  // ros::Subscriber quadcloud_sub = nh.subscribe("env/syncedClouds", 1, quadCloudCallback);
 
-  ros::spin();
+  ros::SubscribeOptions ops;
+  ops.template init<perception_pipeline::Quadcloud>("env/syncedClouds", 1, quadCloudCallback);
+  ops.allow_concurrent_callbacks = true;
+  ros::Subscriber sub = nh.subscribe(ops);
+
+  // ros::spin();
+  ros::MultiThreadedSpinner spinner(16); // 2 threads
+  spinner.spin();
 
   return 0;
 }
