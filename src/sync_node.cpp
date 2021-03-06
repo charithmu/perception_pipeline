@@ -35,8 +35,13 @@ ros::Publisher quadcloud_pub;
 void callback(const sensor_msgs::PointCloud2ConstPtr &raw_cloud1, const sensor_msgs::PointCloud2ConstPtr &raw_cloud2,
               const sensor_msgs::PointCloud2ConstPtr &raw_cloud3, const sensor_msgs::PointCloud2ConstPtr &raw_cloud4)
 {
+  ROSPointCloud cloud1, cloud2, cloud3, cloud4;
+  cloud1 = *raw_cloud1;
+  cloud2 = *raw_cloud2;
+  cloud3 = *raw_cloud3;
+  cloud4 = *raw_cloud4;
+
   QuadCloud quad;
-  quad.header = (*raw_cloud1).header;
   quad.cloud1 = *raw_cloud1;
   quad.cloud2 = *raw_cloud2;
   quad.cloud3 = *raw_cloud3;
