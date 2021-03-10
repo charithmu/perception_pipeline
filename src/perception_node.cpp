@@ -70,7 +70,7 @@ ros::Time lastSavedTimeStamp;
 void quadCloudCallback(const perception_pipeline::QuadcloudConstPtr &quadcloud)
 {
   // start stat measurements
-  stats.startCycle();
+  //stats.startCycle();
 
   ROSPointCloud rcloud1 = quadcloud->cloud1;
   ROSPointCloud rcloud2 = quadcloud->cloud2;
@@ -209,7 +209,7 @@ void quadCloudCallback(const perception_pipeline::QuadcloudConstPtr &quadcloud)
   }
 
   // end stat measurements
-  stats.finishCycle();
+  //stats.finishCycle();
 
   /*
    * SAVE TO *.PCD FILE ACCORDING TO GIVEN INTERVAL
@@ -323,7 +323,7 @@ int main(int argc, char *argv[])
   ros::Subscriber sub = nh.subscribe(ops);
 
   // ros::spin();
-  ros::MultiThreadedSpinner spinner(16); // 2 threads
+  ros::MultiThreadedSpinner spinner(12); // 2 threads
   spinner.spin();
 
   return 0;

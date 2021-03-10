@@ -22,12 +22,12 @@ voxel_leaf_size: 0.01
 resize_filter: "passthrough"
 
 # Clipping box centered at world frame
-x_filter_min: -2.1
-x_filter_max: 2
-y_filter_min: -2.4
-y_filter_max: 3
+x_filter_min: -1.9
+x_filter_max: 1.2
+y_filter_min: -2.6
+y_filter_max: 2.5
 z_filter_min: -2
-z_filter_max: 1
+z_filter_max: 0.6
 
 # Save output frames in given interval to path relative to base directory
 save_pcd: false
