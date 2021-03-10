@@ -1,6 +1,6 @@
 # Perception_Pipeline
 
-### perception pipeline for multiple LIDAR streams
+### perception pipeline for multiple LIDAR streams. Currently the package uses four Ouster-128 sensors
 
 ## Startup Procedure after restart of computer:
 
