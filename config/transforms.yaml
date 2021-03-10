@@ -1,5 +1,5 @@
-## transformation between sensors 
-## Confuiguration: Lab-Position2
+# Transformation among Sensor frames and World frame (Transformation Matrices)
+# Configuration: Lab-Position2
 
 world_sensor1_transform: [1,0,0, 1.0744, 0,1,0, 1.3318, 0,0,1, -0.5681, 0,0,0,1]
 

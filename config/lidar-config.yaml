@@ -1,0 +1,35 @@
+# Referance frames in the systems.
+world_frame: "world_frame"
+sensor1_frame: "sensor1_frame"
+sensor2_frame: "sensor2_frame"
+sensor3_frame: "sensor3_frame"
+sensor4_frame: "sensor4_frame"
+
+# Topics of lidar streams to use.
+sensor1_topic: "/sensor1_os_cloud_node/points"
+sensor2_topic: "/sensor2_os_cloud_node/points"
+sensor3_topic: "/sensor3_os_cloud_node/points"
+sensor4_topic: "/sensor4_os_cloud_node/points"
+
+# Lidar frame synchronization stratergy for mulitple streams. Options: exact/approx/simple
+sync_policy: "approx"
+
+# Downsample filter and resolution. Options: octree/voxelgrid/none, leaf voxel size in meters
+downsample_filter: "none"
+voxel_leaf_size: 0.01
+
+# Output clipping/resizing filter for combined lidar stream. Options: passthrough/none
+resize_filter: "passthrough"
+
+# Clipping box centered at world frame
+x_filter_min: -2.1
+x_filter_max: 2
+y_filter_min: -2.4
+y_filter_max: 3
+z_filter_min: -2
+z_filter_max: 1
+
+# Save output frames in given interval to path relative to base directory
+save_pcd: false
+save_interval: 5
+save_path: "output/1024"
