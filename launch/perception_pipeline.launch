@@ -11,26 +11,26 @@
         sensor3_topic: "/sensor3_os_cloud_node/points"
         sensor4_topic: "/sensor4_os_cloud_node/points"
 
-            <!-- exact/approx/simple -->
+        ## exact/approx/simple
         sync_policy: "approx"
-        
-            <!-- octree/voxelgrid/none -->
-        downsample_filter: "octree"
-        voxel_leaf_size: 0.1
+    
+        ## octree/voxelgrid/none
+        downsample_filter: "none"
+        voxel_leaf_size: 0.01
 
-            <!-- passthrough/node -->
+        ## passthrough/none
         resize_filter: "passthrough"
         
-        x_filter_min: -5
-        x_filter_max: 5
-        y_filter_min: -5
-        y_filter_max: 5
-        z_filter_min: -5
-        z_filter_max: 1.2
+        x_filter_min: -2.1
+        x_filter_max: 2
+        y_filter_min: -2.4
+        y_filter_max: 3
+        z_filter_min: -2
+        z_filter_max: 1
         
         save_pcd: true
-        save_interval: 1
-        save_path: "output"
+        save_interval: 5
+        save_path: "output/1024"
     </rosparam>
 
     <node name="sync_node" pkg="perception_pipeline" type="sync_node" output="screen">

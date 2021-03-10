@@ -237,7 +237,6 @@ int main(int argc, char *argv[])
   ros::init(argc, argv, "perception_node");
 
   ros::NodeHandle nh;
-  ros::NodeHandle priv_nh_("~");
 
   world_frame = nh.param<std::string>("world_frame", "world_frame");
   auto sensor1_frame = nh.param<std::string>("sensor1_frame", "sensor1_frame");
