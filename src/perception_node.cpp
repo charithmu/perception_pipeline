@@ -72,25 +72,25 @@ void quadCloudCallback(const perception_pipeline::QuadcloudConstPtr &quadcloud)
   // start stat measurements
   //stats.startCycle();
 
-  ROSPointCloud rcloud1 = quadcloud->cloud1;
-  ROSPointCloud rcloud2 = quadcloud->cloud2;
-  ROSPointCloud rcloud3 = quadcloud->cloud3;
-  ROSPointCloud rcloud4 = quadcloud->cloud4;
+  // ROSPointCloud rcloud1 = quadcloud->cloud1;
+  // ROSPointCloud rcloud2 = quadcloud->cloud2;
+  // ROSPointCloud rcloud3 = quadcloud->cloud3;
+  // ROSPointCloud rcloud4 = quadcloud->cloud4;
 
   /*
    * TRANSFORM POINTCLOUDS AND PUBLISH SEPARATELY
    */
   ROSPointCloud ros_cloud1_transformed, ros_cloud2_transformed, ros_cloud3_transformed, ros_cloud4_transformed;
 
-  pcl_ros::transformPointCloud(world_frame, transformStamped1.transform, rcloud1, ros_cloud1_transformed);
-  pcl_ros::transformPointCloud(world_frame, transformStamped2.transform, rcloud2, ros_cloud2_transformed);
-  pcl_ros::transformPointCloud(world_frame, transformStamped3.transform, rcloud3, ros_cloud3_transformed);
-  pcl_ros::transformPointCloud(world_frame, transformStamped4.transform, rcloud4, ros_cloud4_transformed);
+  pcl_ros::transformPointCloud(world_frame, transformStamped1.transform, quadcloud->cloud1, ros_cloud1_transformed);
+  pcl_ros::transformPointCloud(world_frame, transformStamped2.transform, quadcloud->cloud2, ros_cloud2_transformed);
+  pcl_ros::transformPointCloud(world_frame, transformStamped3.transform, quadcloud->cloud3, ros_cloud3_transformed);
+  pcl_ros::transformPointCloud(world_frame, transformStamped4.transform, quadcloud->cloud4, ros_cloud4_transformed);
 
-  sensor1_pub.publish(ros_cloud1_transformed);
-  sensor2_pub.publish(ros_cloud2_transformed);
-  sensor3_pub.publish(ros_cloud3_transformed);
-  sensor4_pub.publish(ros_cloud4_transformed);
+  // sensor1_pub.publish(ros_cloud1_transformed);
+  // sensor2_pub.publish(ros_cloud2_transformed);
+  // sensor3_pub.publish(ros_cloud3_transformed);
+  // sensor4_pub.publish(ros_cloud4_transformed);
 
   /*
    * CONVERT POINTCLOUDS ROS->PCL
@@ -323,7 +323,7 @@ int main(int argc, char *argv[])
   ros::Subscriber sub = nh.subscribe(ops);
 
   // ros::spin();
-  ros::MultiThreadedSpinner spinner(12); // 2 threads
+  ros::MultiThreadedSpinner spinner(16); // 2 threads
   spinner.spin();
 
   return 0;
