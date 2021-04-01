@@ -51,8 +51,8 @@ find_package(PCL REQUIRED)
 # Generate messages in the 'msg' folder
 add_message_files(FILES Quadcloud.msg)
 
-# Generate services in the 'srv' folder add_service_files( FILES Service1.srv
-# Service2.srv )
+# Generate services in the 'srv' folder
+add_service_files(FILES PredictLabels.srv)
 
 # Generate actions in the 'action' folder add_action_files( FILES Action1.action
 # Action2.action )
@@ -87,7 +87,7 @@ include_directories(src ${catkin_INCLUDE_DIRS} ${PCL_INCLUDE_DIRS})
 
 # Declare a cpp executable
 add_executable(perception_node src/perception_node.cpp)
-# add_executable(transformpipe_node src/transformpipe_node.cpp)
+add_executable(semseg_node src/semseg_node.cpp)
 add_executable(static_transforms src/static_transforms.cpp)
 add_executable(sensor_playback src/sensor_playback.cpp)
 add_executable(sync_node src/sync_node.cpp)
@@ -99,7 +99,7 @@ add_executable(sync_node src/sync_node.cpp)
 
 # Specify libraries to link a library or executable target against
 target_link_libraries(perception_node ${catkin_LIBRARIES} ${PCL_LIBRARIES})
-# target_link_libraries(transformpipe_node ${catkin_LIBRARIES} ${PCL_LIBRARIES})
+target_link_libraries(semseg_node ${catkin_LIBRARIES} ${PCL_LIBRARIES})
 target_link_libraries(static_transforms ${catkin_LIBRARIES} ${PCL_LIBRARIES})
 target_link_libraries(sensor_playback ${catkin_LIBRARIES} ${PCL_LIBRARIES})
 target_link_libraries(sync_node ${catkin_LIBRARIES} ${PCL_LIBRARIES})
@@ -109,8 +109,13 @@ target_link_libraries(sync_node ${catkin_LIBRARIES} ${PCL_LIBRARIES})
 # ##############################################################################
 
 catkin_install_python(
-  PROGRAMS scripts/talker.py scripts/listener.py
-  scripts/pointcloud_publisher.py DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION})
+  PROGRAMS
+  scripts/talker.py
+  scripts/listener.py
+  scripts/pointcloud_publisher.py
+  scripts/prediction_service.py
+  DESTINATION
+  ${CATKIN_PACKAGE_BIN_DESTINATION})
 
 # all install targets should use catkin DESTINATION variables See
 # http://ros.org/doc/api/catkin/html/adv_user_guide/variables.html
@@ -144,12 +149,12 @@ catkin_install_python(
 
 # Add folders to be run by python nosetests catkin_add_nosetests(test)
 
-message("CMAKE_C_FLAGS_DEBUG is ${CMAKE_C_FLAGS_DEBUG}")
-message("CMAKE_C_FLAGS_RELEASE is ${CMAKE_C_FLAGS_RELEASE}")
-message("CMAKE_C_FLAGS_RELWITHDEBINFO is ${CMAKE_C_FLAGS_RELWITHDEBINFO}")
-message("CMAKE_C_FLAGS_MINSIZEREL is ${CMAKE_C_FLAGS_MINSIZEREL}")
+# message("CMAKE_C_FLAGS_DEBUG is ${CMAKE_C_FLAGS_DEBUG}")
+# message("CMAKE_C_FLAGS_RELEASE is ${CMAKE_C_FLAGS_RELEASE}")
+# message("CMAKE_C_FLAGS_RELWITHDEBINFO is ${CMAKE_C_FLAGS_RELWITHDEBINFO}")
+# message("CMAKE_C_FLAGS_MINSIZEREL is ${CMAKE_C_FLAGS_MINSIZEREL}")
 
-message("CMAKE_CXX_FLAGS_DEBUG is ${CMAKE_CXX_FLAGS_DEBUG}")
-message("CMAKE_CXX_FLAGS_RELEASE is ${CMAKE_CXX_FLAGS_RELEASE}")
-message("CMAKE_CXX_FLAGS_RELWITHDEBINFO is ${CMAKE_CXX_FLAGS_RELWITHDEBINFO}")
-message("CMAKE_CXX_FLAGS_MINSIZEREL is ${CMAKE_CXX_FLAGS_MINSIZEREL}")
+# message("CMAKE_CXX_FLAGS_DEBUG is ${CMAKE_CXX_FLAGS_DEBUG}")
+# message("CMAKE_CXX_FLAGS_RELEASE is ${CMAKE_CXX_FLAGS_RELEASE}")
+# message("CMAKE_CXX_FLAGS_RELWITHDEBINFO is ${CMAKE_CXX_FLAGS_RELWITHDEBINFO}")
+# message("CMAKE_CXX_FLAGS_MINSIZEREL is ${CMAKE_CXX_FLAGS_MINSIZEREL}")

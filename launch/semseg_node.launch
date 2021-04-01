@@ -1,0 +1,7 @@
+<launch>
+
+    <param name="num_threads" type="int" value="2" />
+
+    <node name="semseg_node" pkg="perception_pipeline" type="semseg_node" output="screen"></node>
+
+</launch>
