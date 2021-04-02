@@ -99,8 +99,9 @@ pipeline.load_ckpt(ckpt_path=args.ckpt_path)
 
 
 def run_inferences_online(data):
-    print("Running Inferences...")
-    results = pipeline.run_inference(data)
+    nodename = rospy.get_name()
+    rospy.loginfo("Running Inferences with: %s" % nodename)
+    results = pipeline.run_inference(data, tqdm_disable=True)
     pred = (results["predict_labels"]).astype(np.int32)
     # pred = np.zeros((len(data["point"])))
     return pred
