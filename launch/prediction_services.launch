@@ -1,19 +1,23 @@
 <launch>
-    <!-- Start Node -->
-    <!-- <arg name="instances" default="1" />
+
+    <arg name="instances" default="1" />
 
     <group ns="$(eval 'node' + str(arg('instances')))">
-        <node name="prediction_service" pkg="perceprion_pipeline" type="prediction_service.py" output="screen" />
 
-        <param name="instance_id" type="double" value="$(eval arg('instances')-1)" />
-    </group> -->
+        <node name="prediction_server" pkg="perception_pipeline" type="prediction_service.py" output="screen">
 
-    <!-- Recursively start instance of a node -->
-    <!-- <include file="$(find perception_pipeline)/launch/perception_pipeline.launch" if="$(eval arg('instances') - 1 > 0)">
+            <param name="instance_id" type="int" value="$(eval arg('instances'))" />
+        </node>
+
+    </group>
+
+    <include file="$(find perception_pipeline)/launch/prediction_services.launch" if="$(eval arg('instances') - 1 > 0)">
 
         <arg name="instances" value="$(eval arg('instances')-1)" />
-    </include> -->
 
+    </include>
+
+    <!-- 
     <node name="prediction_server_1" pkg="perception_pipeline" type="prediction_service.py" output="screen">
         <param name="instance_id" type="int" value="1" />
     </node>
@@ -22,8 +26,13 @@
         <param name="instance_id" type="int" value="2" />
     </node>
 
-    <!-- <node name="prediction_server_3" pkg="perception_pipeline" type="prediction_service.py" output="screen">
+    <node name="prediction_server_3" pkg="perception_pipeline" type="prediction_service.py" output="screen">
         <param name="instance_id" type="int" value="3" />
-    </node> -->
+    </node>
+
+    <node name="prediction_server_4" pkg="perception_pipeline" type="prediction_service.py" output="screen">
+        <param name="instance_id" type="int" value="4" />
+    </node>
+     -->
 
 </launch>

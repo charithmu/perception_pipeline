@@ -39,7 +39,7 @@ void predicationCallback(const sensor_msgs::PointCloud2::ConstPtr &cloud)
     req.input = inputPointCloud;
     int serviceId = findMyServiceID(threads);
 
-    std::string serviceName = "prediction_service_" + std::to_string(serviceId);
+    auto serviceName = "/node" + std::to_string(serviceId) + "/prediction_service_" + std::to_string(serviceId);
     ROS_INFO("\nmy service name: %s", serviceName.c_str());
 
     ROS_INFO("Calling the predictor service: %s", serviceName.c_str());
@@ -68,16 +68,16 @@ int main(int argc, char *argv[])
     threads = priv_nh_.param<int>("num_threads", 1);
     ROS_INFO("Configured for %s threads", std::to_string(threads).c_str());
 
-    semseg_pub = nh.advertise<sensor_msgs::PointCloud2>("env/semseg_labeled", 1);
+    semseg_pub = nh.advertise<sensor_msgs::PointCloud2>("env/semseg_labeled", 20);
 
     ros::SubscribeOptions ops;
-    ops.template init<sensor_msgs::PointCloud2>("env/semseg_input", 1, predicationCallback);
+    ops.template init<sensor_msgs::PointCloud2>("env/semseg_input", 20, predicationCallback);
     ops.allow_concurrent_callbacks = true;
     ros::Subscriber sub = nh.subscribe(ops);
 
     for (int i = 1; i <= threads; i++)
     {
-        auto serviceName = "prediction_service_" + std::to_string(i);
+        auto serviceName = "/node" + std::to_string(i) + "/prediction_service_" + std::to_string(i);
         ROS_INFO("Adding service with name: %s", serviceName.c_str());
         ros::ServiceClient predictorClient = nh.serviceClient<perception_pipeline::PredictLabels>(serviceName, true);
         clientList.push_back(predictorClient);
