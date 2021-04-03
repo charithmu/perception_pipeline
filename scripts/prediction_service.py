@@ -8,10 +8,10 @@ from perception_pipeline.srv import PredictLabels, PredictLabelsRequest, Predict
 import random
 import yaml
 import numpy as np
-from semseg import SemsegInferencer
+from semseg.semseg import SemsegInferencer
 
 instance_id = 1
-semseg = None
+ss = None
 
 
 def roscloud_to_mldata(ros_cloud):
@@ -58,8 +58,8 @@ def prediction_service_call(req):
 
     points, mldata = roscloud_to_mldata(req.input)
 
-    results = run_inferences_online(mldata)
-    pred = (results["predict_labels"]).astype(np.int32)
+    results = ss.run_inference_pipeline(mldata)
+    pred_labels = (results["predict_labels"]).astype(np.int32)
 
     rospc2 = ros_create_pointcloud2(points, pred_labels)
 
@@ -79,8 +79,8 @@ def prediction_service():
 
     service_name = "prediction_service_" + str(instance_id)
 
-    global semseg
-    semseg = SemsegInferencer(multiGPU=False, thread_id=int(instance_id), num_gpus=1, model="randlanet")
+    global ss
+    ss = SemsegInferencer(multiGPU=False, thread_id=int(instance_id), num_gpus=1, model="randlanet")
 
     s = rospy.Service(service_name, PredictLabels, prediction_service_call)
 
