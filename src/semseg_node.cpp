@@ -52,8 +52,8 @@ void predicationCallback(const sensor_msgs::PointCloud2::ConstPtr &cloud)
     int serviceId = findMyServiceID(threads);
 
     auto serviceName = "/node" + std::to_string(serviceId) + "/prediction_service_" + std::to_string(serviceId);
-   
-    ROS_INFO("Calling the predictor service: %s", serviceName.c_str());
+
+    // ROS_INFO("Calling the predictor service: %s", serviceName.c_str());
 
     ros::service::waitForService(serviceName, ros::Duration(0));
     ros::ServiceClient client = clientList[serviceId - 1];

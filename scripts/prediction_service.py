@@ -13,6 +13,9 @@ import pprint
 import time
 from pathlib import Path
 
+instance_id = 1
+pipeline = None
+
 # set paths
 home_path = str(Path.home())
 base_path = home_path + "/dev/Open3D-ML"
@@ -40,34 +43,9 @@ kwargs = {
 }
 
 # on-the-fly object using kwargs
-args = type("args", (object,), kwargs)()
+args = type("args", (object, ), kwargs)()
 pprint.pprint(kwargs)
 
-# import tensorflow or pytorch
-if args.framework == "torch":
-    import open3d.ml.torch as ml3d
-else:
-    import open3d.ml.tf as ml3d
-    import tensorflow as tf
-
-gpus = tf.config.experimental.list_physical_devices("GPU")
-pprint.pprint(gpus)
-
-# TF GPU settings
-if gpus is not None and args.framework == "tf":
-    print("Setting up GPUs for TF")
-    try:
-        for gpu in gpus:
-            tf.config.experimental.set_memory_growth(gpu, True)
-        if args.device == "cpu":
-            tf.config.set_visible_devices([], "GPU")
-        elif args.device == "cuda":
-            tf.config.set_visible_devices(gpus[0], "GPU")
-        else:
-            idx = args.device.split(":")[1]
-            tf.config.set_visible_devices(gpus[int(idx)], "GPU")
-    except RuntimeError as e:
-        print(e)
 
 # merge args into config file
 def merge_cfg_file(cfg, args, extra_dict):
@@ -84,18 +62,51 @@ def merge_cfg_file(cfg, args, extra_dict):
     return cfg.dataset, cfg.pipeline, cfg.model
 
 
-cfg = _ml3d.utils.Config.load_from_file(args.cfg_file)
-cfg_dataset, cfg_pipeline, cfg_model = merge_cfg_file(cfg, args, None)
+def load_ml_config():
+    # import tensorflow or pytorch
+    if args.framework == "torch":
+        import open3d.ml.torch as ml3d
+    else:
+        import open3d.ml.tf as ml3d
+        import tensorflow as tf
 
-Pipeline = _ml3d.utils.get_module("pipeline", cfg.pipeline.name, args.framework)
-Model = _ml3d.utils.get_module("model", cfg.model.name, args.framework)
-Dataset = _ml3d.utils.get_module("dataset", cfg.dataset.name)
+        gpus = tf.config.experimental.list_physical_devices("GPU")
+        pprint.pprint(gpus)
 
-dataset = Dataset(**cfg_dataset)
-model = Model(**cfg_model)
-pipeline = Pipeline(model, dataset, **cfg_pipeline)
+        # TF GPU settings
+        if gpus is not None and args.framework == "tf":
+            print("Setting up GPUs for TF")
+            try:
+                for gpu in gpus:
+                    tf.config.experimental.set_memory_growth(gpu, True)
 
-pipeline.load_ckpt(ckpt_path=args.ckpt_path)
+                if args.device == "cpu":
+                    tf.config.set_visible_devices([], "GPU")
+                elif args.device == "cuda":
+                    gpu_id = int(instance_id) % 3
+                    print("GPU %s selected" % gpu_id)
+                    tf.config.set_visible_devices(gpus[gpu_id], "GPU")
+
+            except RuntimeError as e:
+                print(e)
+
+    global pipeline
+
+    cfg = _ml3d.utils.Config.load_from_file(args.cfg_file)
+    cfg_dataset, cfg_pipeline, cfg_model = merge_cfg_file(cfg, args, None)
+
+    Pipeline = _ml3d.utils.get_module("pipeline", cfg.pipeline.name,
+                                      args.framework)
+    Model = _ml3d.utils.get_module("model", cfg.model.name, args.framework)
+    Dataset = _ml3d.utils.get_module("dataset", cfg.dataset.name)
+
+    dataset = Dataset(**cfg_dataset)
+    model = Model(**cfg_model)
+    pipeline = Pipeline(model, dataset, **cfg_pipeline)
+
+    pipeline.load_ckpt(ckpt_path=args.ckpt_path)
+
+    return pipeline
 
 
 def run_inferences_online(data):
@@ -109,7 +120,10 @@ def run_inferences_online(data):
 
 def ros2mldata(ros_cloud):
     field_names = [field.name for field in ros_cloud.fields]
-    cloud_data = list(point_cloud2.read_points(ros_cloud, skip_nans=False, field_names=field_names))
+    cloud_data = list(
+        point_cloud2.read_points(ros_cloud,
+                                 skip_nans=False,
+                                 field_names=field_names))
 
     # input has x,y,z,intensity but intensity is not used
     xyz = [(x, y, z) for x, y, z, i in cloud_data]
@@ -167,9 +181,12 @@ def prediction_service():
     nodename = rospy.get_name()
     rospy.loginfo("%s started..." % nodename)
 
-    instance_id = rospy.get_param("~instance_id", 0)
+    global instance_id
+    instance_id = rospy.get_param("~instance_id", 1)
 
     service_name = "prediction_service_" + str(instance_id)
+
+    load_ml_config()
 
     s = rospy.Service(service_name, PredictLabels, prediction_service_call)
 
