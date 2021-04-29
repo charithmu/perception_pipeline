@@ -8,8 +8,8 @@
 ## Startup Procedure:
 
 1. check these services are running, if not start.
-* sudo systemctl restart ptp4l
-* sudo systemctl restart phc2sys
+sudo systemctl restart ptp4l
+sudo systemctl restart phc2sys
 
 2. Start roscore
 roscore
