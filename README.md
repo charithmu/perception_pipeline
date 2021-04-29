@@ -1,6 +1,9 @@
-# Perception_Pipeline
+# Perception Pipeline
 
-### perception pipeline for multiple LIDAR streams. Currently the package uses four Ouster-128 sensors
+### perception pipeline for multiple LIDAR streams. Currently the package is ocnfigured for 4 Ouster-128 sensors
+### Bounding box, OctreeGrid and VoxelGrid fiters are implemented.
+### Output can either be saved to *.pcd files or streamed with ROS messages.
+### Current test setup achieved 20hz resolution with 100-150ms. Highly depended on the host system. 
 
 ## Startup Procedure after restart of computer:
 
