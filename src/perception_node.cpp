@@ -8,11 +8,10 @@
 #include <pcl_ros/transforms.h>
 
 // tf
-#include <tf2_geometry_msgs/tf2_geometry_msgs.h>
+// #include <tf2_geometry_msgs/tf2_geometry_msgs.h>
 #include <tf2_ros/buffer.h>
 #include <tf2_ros/transform_listener.h>
-#include <tf2_eigen/tf2_eigen.h>
-#include <tf_conversions/tf_eigen.h>
+// #include <tf2_eigen/tf2_eigen.h>
 
 // msgs
 #include <perception_pipeline/Quadcloud.h>
@@ -45,6 +44,7 @@ Statistics stats;
 
 // Parameters used gloablly
 std::string world_frame;
+std::string optimizations;
 
 float voxel_leaf_size; // in mm
 float x_filter_min, x_filter_max, y_filter_min, y_filter_max, z_filter_min, z_filter_max;
@@ -63,19 +63,16 @@ ros::Publisher octreefilter_pub, voxelfilter_pub, passfilter_pub;
 // last frame time
 ros::Time lastSavedTimeStamp;
 
-
 /*
  * Synchronized clouds callback
  */
 void quadCloudCallback(const perception_pipeline::QuadcloudConstPtr &quadcloud)
 {
-  // start stat measurements
-  //stats.startCycle();
-
-  // ROSPointCloud rcloud1 = quadcloud->cloud1;
-  // ROSPointCloud rcloud2 = quadcloud->cloud2;
-  // ROSPointCloud rcloud3 = quadcloud->cloud3;
-  // ROSPointCloud rcloud4 = quadcloud->cloud4;
+  if (optimizations == "None")
+  {
+    // start stat measurements
+    stats.startCycle();
+  }
 
   /*
    * TRANSFORM POINTCLOUDS AND PUBLISH SEPARATELY
@@ -87,10 +84,13 @@ void quadCloudCallback(const perception_pipeline::QuadcloudConstPtr &quadcloud)
   pcl_ros::transformPointCloud(world_frame, transformStamped3.transform, quadcloud->cloud3, ros_cloud3_transformed);
   pcl_ros::transformPointCloud(world_frame, transformStamped4.transform, quadcloud->cloud4, ros_cloud4_transformed);
 
-  // sensor1_pub.publish(ros_cloud1_transformed);
-  // sensor2_pub.publish(ros_cloud2_transformed);
-  // sensor3_pub.publish(ros_cloud3_transformed);
-  // sensor4_pub.publish(ros_cloud4_transformed);
+  if (optimizations == "None")
+  {
+    sensor1_pub.publish(ros_cloud1_transformed);
+    sensor2_pub.publish(ros_cloud2_transformed);
+    sensor3_pub.publish(ros_cloud3_transformed);
+    sensor4_pub.publish(ros_cloud4_transformed);
+  }
 
   /*
    * CONVERT POINTCLOUDS ROS->PCL
@@ -208,8 +208,11 @@ void quadCloudCallback(const perception_pipeline::QuadcloudConstPtr &quadcloud)
     passFilterOutput = pcl_cloud_passthorugh_ptr;
   }
 
-  // end stat measurements
-  //stats.finishCycle();
+  if (optimizations == "None")
+  {
+    // end stat measurements
+    stats.finishCycle();
+  }
 
   /*
    * SAVE TO *.PCD FILE ACCORDING TO GIVEN INTERVAL
@@ -239,6 +242,8 @@ int main(int argc, char *argv[])
   ros::NodeHandle nh;
 
   world_frame = nh.param<std::string>("world_frame", "world_frame");
+  optimizations = nh.param<std::string>("optimizations", "None");
+
   auto sensor1_frame = nh.param<std::string>("sensor1_frame", "sensor1_frame");
   auto sensor2_frame = nh.param<std::string>("sensor2_frame", "sensor2_frame");
   auto sensor3_frame = nh.param<std::string>("sensor3_frame", "sensor3_frame");

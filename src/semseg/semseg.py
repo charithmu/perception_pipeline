@@ -18,10 +18,10 @@ class SemsegInferencer:
         kpconv_smartlab_cfg = self.base_path + "/ml3d/configs/kpconv_smartlab.yml"
         if model == "randlanet":
             self.cfg_file = randlanet_smartlab_cfg
+            self.ckpt_path = self.ckpt_base_path + "/RandLANet_SmartLab_tf/checkpoint/ckpt-6"
         elif model == "kpconv":
             self.cfg_file = kpconv_smartlab_cfg
-        # checkpoints
-        self.ckpt_path = self.ckpt_base_path + "/RandLANet_SmartLab_tf/checkpoint/ckpt-6"
+            self.ckpt_path = self.ckpt_base_path + "/KPFCNN_SmartLab_tf/checkpoint/ckpt-11"
 
         # import custom open3d.ml
         os.environ["OPEN3D_ML_ROOT"] = self.base_path
@@ -42,6 +42,7 @@ class SemsegInferencer:
         # pprint.pprint(kwargs)
         self.setupGPUs(multiGPU, thread_id, num_gpus)
         self.dataset, self.model, self.pipeline = self.init_pipeline()
+        self.pipeline.load_ckpt(ckpt_path=self.args.ckpt_path)
 
     # merge args into config file
     @staticmethod
@@ -92,7 +93,6 @@ class SemsegInferencer:
         return dataset, model, pipeline
 
     def run_inference_pipeline(self, data):
-        self.pipeline.load_ckpt(ckpt_path=self.args.ckpt_path)
         results = self.pipeline.run_inference(data, tqdm_disable=True)
         return results
 

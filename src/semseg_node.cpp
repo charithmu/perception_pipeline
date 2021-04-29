@@ -71,7 +71,7 @@ void predicationCallback(const sensor_msgs::PointCloud2::ConstPtr &cloud)
 
     ros::Time end = ros::Time::now();
     ros::Duration duration = end - start;
-    ROS_INFO("Callback took %s seconds.", std::to_string(duration.toSec()).c_str());
+    // ROS_INFO("Callback took %s seconds.", std::to_string(duration.toSec()).c_str());
 }
 
 int main(int argc, char *argv[])
@@ -84,7 +84,7 @@ int main(int argc, char *argv[])
     ROS_INFO("Configured for %s threads", std::to_string(threads).c_str());
 
     semseg_pub = nh.advertise<sensor_msgs::PointCloud2>("env/semseg_labeled", 1);
-    benchmark = nh.advertise<std_msgs::String>("env/callback_benchmark", 1);
+    // benchmark = nh.advertise<std_msgs::String>("env/callback_benchmark", 1);
 
     ros::SubscribeOptions ops;
     ops.template init<sensor_msgs::PointCloud2>("env/semseg_input", 1, predicationCallback);

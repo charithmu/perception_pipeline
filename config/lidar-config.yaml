@@ -11,12 +11,15 @@ sensor2_topic: "/sensor2_os_cloud_node/points"
 sensor3_topic: "/sensor3_os_cloud_node/points"
 sensor4_topic: "/sensor4_os_cloud_node/points"
 
+# optimization tag uses to skip intermediate ros outputs to optimize for speed, Options: Full/None
+optimizations: "Full"
+
 # Lidar frame synchronization stratergy for mulitple streams. Options: exact/approx/simple
 sync_policy: "approx"
 
 # Downsample filter and resolution. Options: octree/voxelgrid/none, leaf voxel size in meters
-downsample_filter: "none"
-voxel_leaf_size: 0.01
+downsample_filter: "None"
+voxel_leaf_size: 0.05
 
 # Output clipping/resizing filter for combined lidar stream. Options: passthrough/none
 resize_filter: "passthrough"

@@ -17,8 +17,8 @@ source devel_release/setup.bash
 roslaunch ouster_ros ouster-quad.launch 
 
 4. Run perception pipeline
-cd ~/dev/perception_ws/
-source devel_debug/setup.bash
+cd ~/dev/perceptionws/
+source devel_release/setup.bash
 roslaunch perception_pipeline perception_pipeline.launch
 
 5. Run Rviz to visualize

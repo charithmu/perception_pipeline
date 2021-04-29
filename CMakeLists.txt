@@ -8,13 +8,11 @@ find_package(
   catkin REQUIRED
   COMPONENTS roscpp
              sensor_msgs
-             tf
              tf2
              pcl_msgs
              pcl_ros
              pcl_conversions
              visualization_msgs
-             tf_conversions
              tf2_geometry_msgs
              std_msgs
              message_generation)
@@ -110,9 +108,6 @@ target_link_libraries(sync_node ${catkin_LIBRARIES} ${PCL_LIBRARIES})
 
 catkin_install_python(
   PROGRAMS
-  scripts/talker.py
-  scripts/listener.py
-  scripts/pointcloud_publisher.py
   scripts/prediction_service.py
   DESTINATION
   ${CATKIN_PACKAGE_BIN_DESTINATION})

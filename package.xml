@@ -25,7 +25,7 @@
   <!-- Author tags are optional, mutiple are allowed, one per tag -->
   <!-- Authors do not have to be maintianers, but could be -->
   <!-- Example: -->
-  <!-- <author email="jane.doe@example.com">Jane Doe</author> -->
+  <author email="mung@zhaw.ch">Charith Munasinghe</author>
 
 
   <!-- The *_depend tags are used to specify dependencies -->
@@ -44,8 +44,8 @@
   <depend>roscpp</depend>
   <depend>sensor_msgs</depend>
 
-  <depend>tf</depend>
   <depend>tf2</depend>
+  <depend>tf2_geometry_msgs</depend>
 
   <depend>pcl_conversions</depend>
   <depend>pcl_msgs</depend>
@@ -53,15 +53,12 @@
 
   <depend>visualization_msgs</depend>
 
-  <depend>tf_conversions</depend>
-  <depend>tf2_geometry_msgs</depend>
-
   <depend>rosbag</depend>
 
   <build_depend>message_generation</build_depend>
-  
+
   <exec_depend>message_runtime</exec_depend>
-  
+
   <!-- The export tag contains other, unspecified, tags -->
   <export>
     <!-- You can specify that this package is a metapackage here: -->

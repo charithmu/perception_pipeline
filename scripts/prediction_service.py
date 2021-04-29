@@ -5,8 +5,7 @@ from sensor_msgs.msg import PointCloud2, PointField
 from sensor_msgs import point_cloud2
 from std_msgs.msg import Header
 from perception_pipeline.srv import PredictLabels, PredictLabelsRequest, PredictLabelsResponse
-import random
-import yaml
+import time
 import numpy as np
 from semseg.semseg import SemsegInferencer
 
@@ -58,7 +57,13 @@ def prediction_service_call(req):
 
     points, mldata = roscloud_to_mldata(req.input)
 
+    st = time.perf_counter()
     results = ss.run_inference_pipeline(mldata)
+    et = time.perf_counter()
+
+    du = et - st
+    # rospy.loginfo(f"Prediction took {du:0.6f} seconds.")
+
     pred_labels = (results["predict_labels"]).astype(np.int32)
 
     rospc2 = ros_create_pointcloud2(points, pred_labels)
@@ -74,13 +79,16 @@ def prediction_service():
     nodename = rospy.get_name()
     rospy.loginfo("%s Started." % nodename)
 
+    model_name = rospy.get_param("~model", "randlanet")
+    rospy.loginfo("Using Deep Neural Network: %s" % model_name)
+
     global instance_id
     instance_id = rospy.get_param("~instance_id", 1)
 
     service_name = "prediction_service_" + str(instance_id)
 
     global ss
-    ss = SemsegInferencer(multiGPU=False, thread_id=int(instance_id), num_gpus=1, model="randlanet")
+    ss = SemsegInferencer(multiGPU=False, thread_id=int(instance_id), num_gpus=1, model=model_name)
 
     s = rospy.Service(service_name, PredictLabels, prediction_service_call)
 

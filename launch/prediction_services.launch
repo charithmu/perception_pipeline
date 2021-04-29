@@ -1,12 +1,14 @@
 <launch>
 
-    <arg name="instances" default="1" />
+    <arg name="instances" default="8" />
+    <arg name="model" default="randlanet" />
 
     <group ns="$(eval 'node' + str(arg('instances')))">
 
         <node name="prediction_server" pkg="perception_pipeline" type="prediction_service.py" output="screen">
 
             <param name="instance_id" type="int" value="$(eval arg('instances'))" />
+            <param name="model" type="string" value="$(arg model)"/>
         </node>
 
     </group>
@@ -14,25 +16,7 @@
     <include file="$(find perception_pipeline)/launch/prediction_services.launch" if="$(eval arg('instances') - 1 > 0)">
 
         <arg name="instances" value="$(eval arg('instances')-1)" />
-
+        <arg name="model" value="$(arg model)" />
     </include>
-
-    <!-- 
-    <node name="prediction_server_1" pkg="perception_pipeline" type="prediction_service.py" output="screen">
-        <param name="instance_id" type="int" value="1" />
-    </node>
-
-    <node name="prediction_server_2" pkg="perception_pipeline" type="prediction_service.py" output="screen">
-        <param name="instance_id" type="int" value="2" />
-    </node>
-
-    <node name="prediction_server_3" pkg="perception_pipeline" type="prediction_service.py" output="screen">
-        <param name="instance_id" type="int" value="3" />
-    </node>
-
-    <node name="prediction_server_4" pkg="perception_pipeline" type="prediction_service.py" output="screen">
-        <param name="instance_id" type="int" value="4" />
-    </node>
-     -->
 
 </launch>
