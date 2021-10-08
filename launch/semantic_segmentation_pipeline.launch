@@ -1,0 +1,35 @@
+<launch>
+ 
+
+    <arg name="num" default="5" />
+    <arg name="model" default="kpconv" />
+
+    <group ns="$(eval 'node' + str(arg('num')))">
+
+        <node name="prediction_server" pkg="perception_pipeline" type="prediction_service.py" output="screen">
+
+            <param name="instance_id" type="int" value="$(eval arg('num'))" />
+            <param name="model" type="string" value="$(arg model)"/>
+        </node>
+
+    </group>
+
+    <include file="$(find perception_pipeline)/launch/prediction_services.launch" if="$(eval arg('num') - 1 > 0)">
+
+        <arg name="num" value="$(eval arg('num')-1)" />
+        <arg name="model" value="$(arg model)" />
+    </include>
+
+    <arg name="semseg_node_start_delay" default="12.0" /> 
+
+    <node name="semseg_node" pkg="perception_pipeline" type="semseg_node" output="screen" launch-prefix="bash -c 'sleep $(arg semseg_node_start_delay); $0 $@' " >
+        <param name="num_threads" type="int" value="$(arg num)" />
+    </node>
+
+    <arg name="relay_node_start_delay" default="15.0" /> 
+    <node pkg="topic_tools" type="relay" name="relay_semseg_input" args="/env/combined/passfilter /env/semseg_input" launch-prefix="bash -c 'sleep relay_node_start_delay; $0 $@' "/>
+<!-- <arg name="node_start_delay" default="1.0" />  
+<node name="listener" pkg="roscpp_tutorials" type="listener" launch-prefix="bash -c 'sleep $(arg node_start_delay); $0 $@' " /> -->
+
+
+</launch>

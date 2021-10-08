@@ -15,16 +15,26 @@ sudo systemctl restart phc2sys
 roscore
 
 3. Run ouster lidar client for ROS 
-cd ~/dev/catkinws-ouster/
-source devel_release/setup.bash
+source ~/dev/catkinws-ouster/devel_release/setup.bash
 roslaunch ouster_ros ouster-quad.launch 
 
 4. Run perception pipeline
 cd ~/dev/perceptionws/
-source devel_release/setup.bash
+source ~/dev/perceptionws/devel_release/setup.bash
 roslaunch perception_pipeline perception_pipeline.launch
 
 5. Run Rviz to visualize
-rviz -d ~/dev/perception_ws/src/perception_pipeline/config/rvizconfig.rviz
+conda deactivate
+rviz -d ~/dev/perception_pipeline/config/rvizconfig.rviz
 
 6. After closing the nodes makes sure to stop the roscore and restart it again as well.
+
+7. Run Service Nodes and wait
+source ~/dev/perceptionws/devel_release/setup.bash  
+roslaunch perception_pipeline semseg_node.launch 
+
+8. Run Prdictor Models and wait
+source ~/dev/perceptionws/devel_release/setup.bash 
+roslaunch perception_pipeline prediction_services.launch
+
+9. rosrun topic_tools relay /env/combined/passfilter env/semseg_input

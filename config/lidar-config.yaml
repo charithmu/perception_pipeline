@@ -18,7 +18,7 @@ optimizations: "Full"
 sync_policy: "approx"
 
 # Downsample filter and resolution. Options: octree/voxelgrid/none, leaf voxel size in meters
-downsample_filter: "None"
+downsample_filter: "none"
 voxel_leaf_size: 0.05
 
 # Output clipping/resizing filter for combined lidar stream. Options: passthrough/none

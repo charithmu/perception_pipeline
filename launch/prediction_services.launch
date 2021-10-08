@@ -1,21 +1,21 @@
 <launch>
 
-    <arg name="instances" default="8" />
-    <arg name="model" default="randlanet" />
+    <arg name="num" default="5" />
+    <arg name="model" default="kpconv" />
 
-    <group ns="$(eval 'node' + str(arg('instances')))">
+    <group ns="$(eval 'node' + str(arg('num')))">
 
         <node name="prediction_server" pkg="perception_pipeline" type="prediction_service.py" output="screen">
 
-            <param name="instance_id" type="int" value="$(eval arg('instances'))" />
+            <param name="instance_id" type="int" value="$(eval arg('num'))" />
             <param name="model" type="string" value="$(arg model)"/>
         </node>
 
     </group>
 
-    <include file="$(find perception_pipeline)/launch/prediction_services.launch" if="$(eval arg('instances') - 1 > 0)">
+    <include file="$(find perception_pipeline)/launch/prediction_services.launch" if="$(eval arg('num') - 1 > 0)">
 
-        <arg name="instances" value="$(eval arg('instances')-1)" />
+        <arg name="num" value="$(eval arg('num')-1)" />
         <arg name="model" value="$(arg model)" />
     </include>
 
